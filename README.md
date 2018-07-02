@@ -9,7 +9,7 @@
   - 5.如果日志中有文件名/行号(Visual Studio格式), 双击日志的话,可以通过VS打开文件并定位.
  
 # 日志配置
-  - 0.示例文件参见 x64\Release 目录下的 Standard-SpringBoot.ini 等文件
+  - 0.示例文件参见 [Standard-SpringBoot.ini](x64/Release/Standard-SpringBoot.ini) 等,对应的示例日志文件为 [spring log demo](demos/springdemo.zip)
   - 1.COMMON 
     - REGULAR : 定义了一行日志的正则表达式,此为日志解析的核心部分, 推荐使用 Regex Match Tracer 等工具编写和确认正则表达式.
     - TIME_FORMAT : 定义了时间部分的格式, 目前只支持 yyyy-MM-dd HH:mm:ss.SSS 等四种格式, 配置好以后可以自动计算同一线程中前后两条日志的时间差(Elapse)
