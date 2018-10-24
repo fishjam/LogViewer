@@ -673,26 +673,31 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
 			if (!m_logConfig.m_strTimeFormat.IsEmpty())
 			{
 				SYSTEMTIME st = {0};
+				GetLocalTime(&st);
 				int microSecond = 0;//, ignore, zooHour = 0, zooMinute = 0;
 				if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
 					|| 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
 					)
 				{
+					m_logConfig.m_dateTimeType = dttDateTime;
 					//2017-06-12 18:21:34.193
-					sscanf_s(strTime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d%*c%3d",
+					sscanf_s(strTime.c_str(), "%4d-%2d-%2d%*c%2d:%2d:%2d%*c%3d",
 						&st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
                     st.wMilliseconds = microSecond;
 				}
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
+					m_logConfig.m_dateTimeType = dttDateTime;
                     sscanf_s(strTime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d%",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))){
+					m_logConfig.m_dateTimeType = dttTime;
                     sscanf_s(strTime.c_str(), "%2d:%2d:%2d%",
                         &st.wHour, &st.wMinute, &st.wSecond);
                 }
 				else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
+					m_logConfig.m_dateTimeType = dttTime;
 					sscanf_s(strTime.c_str(), "%2d:%2d:%2d%*c%3d",
 						&st.wHour, &st.wMinute, &st.wSecond, &microSecond);
                     st.wMilliseconds = microSecond;
@@ -703,6 +708,10 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 FILETIME localFileTime = {0};
                 SystemTimeToFileTime(&st,&localFileTime);
 				pItem->time = *((LONGLONG*)&localFileTime);// ((((st.wHour * 60) + st.wMinute) * 60) + st.wSecond)* 1000 + microSecond;
+				if (m_logConfig.m_dateTimeType == dttTime)
+				{
+					pItem->time %= MIN_TIME_WITH_DAY_INFO;
+				}
 			}
 
 		}

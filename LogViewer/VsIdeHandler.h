@@ -14,6 +14,12 @@
 #  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("9.0") lcid("0") raw_interfaces_only named_guids
 #elif _MSC_VER == 1600      //VS2010
 #  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("10.0") lcid("0") raw_interfaces_only named_guids
+#elif _MSC_VER == 1700      //VS2012
+#  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("11.0") lcid("0") raw_interfaces_only named_guids
+#elif _MSC_VER == 1800      //VS2013
+#  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("12.0") lcid("0") raw_interfaces_only named_guids
+#elif _MSC_VER == 1900      //VS2015
+#  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("13.0") lcid("0") raw_interfaces_only named_guids
 #endif
 #pragma warning( default : 4146 )
 #pragma warning( default : 4278 )

@@ -24,6 +24,7 @@ CLogViewerConfig::CLogViewerConfig(void)
     m_nItemFile = INVLIAD_ITEM_MAP;
     m_nItemLine = INVLIAD_ITEM_MAP;
 	m_nItemLog = INVLIAD_ITEM_MAP;
+	m_dateTimeType = dttDateTime;
 }
 
 CLogViewerConfig::~CLogViewerConfig(void)

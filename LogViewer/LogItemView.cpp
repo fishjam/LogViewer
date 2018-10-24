@@ -273,13 +273,13 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
                         st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
                 }else{
-                    microSec = pLogItem->time % TIME_RESULT_TO_MILLISECOND;
+                    microSec = pLogItem->time % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
                     LONGLONG tmpTime = pLogItem->time / TIME_RESULT_TO_MILLISECOND;
                     st.wSecond = tmpTime % 60;
                     tmpTime /= 60;
                     st.wMinute = tmpTime % 60;
                     st.wHour = (WORD)tmpTime / 60;
-                    strFormat.Format(TEXT("%02d:%02d:%02d:%03d"),
+                    strFormat.Format(TEXT("%02d:%02d:%02d.%03d"),
                         st.wHour, st.wMinute, st.wSecond, microSec);
                 }
 

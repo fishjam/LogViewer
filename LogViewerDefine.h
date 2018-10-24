@@ -6,9 +6,9 @@
 #include <list>
 #include <ftlSharePtr.h>
 
-#define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * 1000 * 10000) 
 //time 现在的单位是 FILETIME(100ns)
-#define TIME_RESULT_TO_MILLISECOND  (10 * 1000)
+#define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
+#define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
 
 typedef std::string THREAD_ID_TYPE;
 typedef std::string PROCESS_ID_TYPE;

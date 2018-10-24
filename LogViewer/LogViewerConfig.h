@@ -27,6 +27,12 @@
 #define DEFAULT_NULL_VALUE	TEXT("")
 #define INVLIAD_ITEM_MAP	(-1)
 
+enum DateTimeType{
+	dttDateTime,
+	dttDate,
+	dttTime
+};
+
 class CLogViewerConfig
 {
 public:
@@ -44,6 +50,7 @@ public:
 	CFConfigIniFile m_config;
 	CString m_strLogRegular;
 	CString m_strTimeFormat;
+	DateTimeType	m_dateTimeType;
 
 	INT m_nItemTime;
 	INT m_nItemLevel;
