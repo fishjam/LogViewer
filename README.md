@@ -1,3 +1,7 @@
+# TODO
+ - [ ] Support pipe source, so can support real-time log(tail -f xxx | adb logcat | idevicelogsys | etc.)
+ - [ ] change "PID+TID" (Plane Structure) to "Server>PID>TID"(Tree Structure)
+
 # LogViewer
   - 一个通用的日志查看器. 可以通过用户配置的正则表达式解析文本格式的日志文件(如 Spring-Boot, Android, iOS, Visual Studio 等的文本日志), 然后进行显示,搜索,过滤,分析等. ***理论上说,只要能写出日志文件的正则表达式,即可通过这个工具分析任何一种日志格式***.
  
