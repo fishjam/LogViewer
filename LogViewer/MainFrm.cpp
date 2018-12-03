@@ -3,8 +3,7 @@
 
 #include "stdafx.h"
 #include "LogViewer.h"
-#include "ProcessView.h"
-#include "ThreadView.h"
+#include "MachinePidTidTreeView.h"
 #include "LogFilterView.h"
 #include "LogItemView.h"
 #include "MainFrm.h"
@@ -21,25 +20,25 @@
 IMPLEMENT_DYNCREATE(CMainFrame, CFrameWnd)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
-	ON_WM_CREATE()
+    ON_WM_CREATE()
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_COUNT, &CMainFrame::OnUpdateIndicatorFileCount)
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_THREAD_COUNT, &CMainFrame::OnUpdateIndicatorThreadCount)
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_LOGITEM_COUNT, &CMainFrame::OnUpdateIndicatorLogItemCount)
     ON_WM_DROPFILES()
 
     ON_COMMAND_RANGE(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END, &CMainFrame::OnSettingConfigIniChange)
-	ON_COMMAND_RANGE(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, &CMainFrame::OnCodePageChange)
+    ON_COMMAND_RANGE(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, &CMainFrame::OnCodePageChange)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
 {
-	ID_SEPARATOR,           // status line indicator
+    ID_SEPARATOR,           // status line indicator
     ID_INDICATOR_FILE_COUNT,
     ID_INDICATOR_THREAD_COUNT,
     ID_INDICATOR_LOGITEM_COUNT,
-	ID_INDICATOR_CAPS,
-	ID_INDICATOR_NUM,
-	ID_INDICATOR_SCRL,
+    ID_INDICATOR_CAPS,
+    ID_INDICATOR_NUM,
+    ID_INDICATOR_SCRL,
 };
 
 
@@ -47,7 +46,7 @@ static UINT indicators[] =
 
 CMainFrame::CMainFrame()
 {
-	// TODO: add member initialization code here
+    // TODO: add member initialization code here
 }
 
 CMainFrame::~CMainFrame()
@@ -56,8 +55,8 @@ CMainFrame::~CMainFrame()
 
 FileFindResultHandle CMainFrame::OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam)
 {
-	UNREFERENCED_PARAMETER(pszFilePath);
-	UNREFERENCED_PARAMETER(pParam);
+    UNREFERENCED_PARAMETER(pszFilePath);
+    UNREFERENCED_PARAMETER(pParam);
 
     m_iniFiles.Add(findData.cFileName);
     return rhContinue;
@@ -67,37 +66,37 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
     BOOL bRet = FALSE;
 
-	if (CFrameWnd::OnCreate(lpCreateStruct) == -1)
-		return -1;
-	
-	if (!m_wndToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP
-		| CBRS_GRIPPER | CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
-		!m_wndToolBar.LoadToolBar(IDR_MAINFRAME))
-	{
-		TRACE0("Failed to create toolbar\n");
-		return -1;      // fail to create
-	}
+    if (CFrameWnd::OnCreate(lpCreateStruct) == -1)
+        return -1;
+    
+    if (!m_wndToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP
+        | CBRS_GRIPPER | CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
+        !m_wndToolBar.LoadToolBar(IDR_MAINFRAME))
+    {
+        TRACE0("Failed to create toolbar\n");
+        return -1;      // fail to create
+    }
 
-	if (!m_wndStatusBar.Create(this) ||
-		!m_wndStatusBar.SetIndicators(indicators,
-		  sizeof(indicators)/sizeof(UINT)))
-	{
-		TRACE0("Failed to create status bar\n");
-		return -1;      // fail to create
-	}
+    if (!m_wndStatusBar.Create(this) ||
+        !m_wndStatusBar.SetIndicators(indicators,
+          sizeof(indicators)/sizeof(UINT)))
+    {
+        TRACE0("Failed to create status bar\n");
+        return -1;      // fail to create
+    }
 
-	// TODO: Delete these three lines if you don't want the toolbar to be dockable
-	m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
-	EnableDocking(CBRS_ALIGN_ANY);
-	DockControlBar(&m_wndToolBar);
+    // TODO: Delete these three lines if you don't want the toolbar to be dockable
+    m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
+    EnableDocking(CBRS_ALIGN_ANY);
+    DockControlBar(&m_wndToolBar);
 
-	CMenu* pMenuCodePage = GetMenu()->GetSubMenu(MENU_INDEX_CODEPAGE);
-	if (pMenuCodePage)
-	{
-		//缺省编码方式是UTF8
-		pMenuCodePage->CheckMenuRadioItem(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, ID_CODE_PAGE_UTF8, 
-			MF_BYCOMMAND|MF_CHECKED);
-	}
+    CMenu* pMenuCodePage = GetMenu()->GetSubMenu(MENU_INDEX_CODEPAGE);
+    if (pMenuCodePage)
+    {
+        //缺省编码方式是UTF8
+        pMenuCodePage->CheckMenuRadioItem(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, ID_CODE_PAGE_UTF8, 
+            MF_BYCOMMAND|MF_CHECKED);
+    }
     //查找当前目录下的所有 .ini 文件，然后放入菜单
     FTL::CFFileFinder finder;
     TCHAR szModulePath[MAX_PATH] = {0};
@@ -127,17 +126,17 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     
     GetMenu()->AppendMenu(MF_POPUP, (UINT)m_menuIni.m_hMenu, TEXT("ConfigIni"));
 
-	return 0;
+    return 0;
 }
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
-	if( !CFrameWnd::PreCreateWindow(cs) )
-		return FALSE;
-	// TODO: Modify the Window class or styles here by modifying
-	//  the CREATESTRUCT cs
+    if( !CFrameWnd::PreCreateWindow(cs) )
+        return FALSE;
+    // TODO: Modify the Window class or styles here by modifying
+    //  the CREATESTRUCT cs
 
-	return TRUE;
+    return TRUE;
 }
 
 
@@ -146,12 +145,12 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 #ifdef _DEBUG
 void CMainFrame::AssertValid() const
 {
-	CFrameWnd::AssertValid();
+    CFrameWnd::AssertValid();
 }
 
 void CMainFrame::Dump(CDumpContext& dc) const
 {
-	CFrameWnd::Dump(dc);
+    CFrameWnd::Dump(dc);
 }
 
 #endif //_DEBUG
@@ -164,24 +163,27 @@ void CMainFrame::Dump(CDumpContext& dc) const
 
 BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 {
-	BOOL bRet = FALSE;
-	FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}\n"),
-		lpcs->cx, lpcs->cy);
+    BOOL bRet = FALSE;
+    FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}\n"),
+        lpcs->cx, lpcs->cy);
     // create a splitter with 1 row, 2 columns
-	CRect rcWin;
-	GetWindowRect(&rcWin);
+    CRect rcWin;
+    GetWindowRect(&rcWin);
     API_VERIFY(m_wndHorzSplitter.CreateStatic(this, 1, 2));
     
- 	API_VERIFY(m_wndIdVertSplitter.CreateStatic(&m_wndHorzSplitter, 2, 1,
- 		WS_CHILD | WS_VISIBLE | WS_BORDER,  // style, WS_BORDER is needed
- 		m_wndHorzSplitter.IdFromRowCol(0,0)));
+    API_VERIFY(m_wndHorzSplitter.CreateView(0, 0, RUNTIME_CLASS(CMachinePidTidTreeView), 
+        CSize(200, 300), pContext));
 
-	API_VERIFY(m_wndIdVertSplitter.CreateView(0, 0,
-		RUNTIME_CLASS(CProcessView), CSize(200, 300), pContext));
-
-	API_VERIFY(m_wndIdVertSplitter.CreateView(1, 0,
-		RUNTIME_CLASS(CThreadView), CSize(200, 300), pContext));
-	m_wndHorzSplitter.SetColumnInfo(0, 150, 10);
+//  	API_VERIFY(m_wndIdVertSplitter.CreateStatic(&m_wndHorzSplitter, 1, 1,
+//  		WS_CHILD | WS_VISIBLE | WS_BORDER,  // style, WS_BORDER is needed
+//  		m_wndHorzSplitter.IdFromRowCol(0,0)));
+// 
+// 	API_VERIFY(m_wndIdVertSplitter.CreateView(0, 0,
+// 		RUNTIME_CLASS(CProcessView), CSize(200, 300), pContext));
+// 
+// 	API_VERIFY(m_wndIdVertSplitter.CreateView(1, 0,
+// 		RUNTIME_CLASS(CThreadView), CSize(200, 300), pContext));
+// 	m_wndHorzSplitter.SetColumnInfo(0, 150, 10);
 
 //     API_VERIFY(m_wndHorzSplitter.CreateView(0, 0,
 //         pContext->m_pNewViewClass, CSize(100, 600), pContext));
@@ -250,7 +252,7 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
 
 void CMainFrame::OnSettingConfigIniChange(UINT nID)
 {
-	BOOL bRet = FALSE;
+    BOOL bRet = FALSE;
     UINT index = nID - IDC_SETTING_CONFIG_INI_BEGIN;
     FTLTRACE(TEXT("OnSettingConfigIniChange, index=%d\n"), index);
     API_VERIFY(m_menuIni.CheckMenuRadioItem(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END
@@ -265,38 +267,38 @@ void CMainFrame::OnSettingConfigIniChange(UINT nID)
 
 void CMainFrame::OnCodePageChange(UINT nID)
 {
-	BOOL bRet = FALSE;
-	
-	CString strMenuText;
-	CMenu* pMenuCodePage = GetMenu()->GetSubMenu(MENU_INDEX_CODEPAGE);
-	if (pMenuCodePage)
-	{
-		//pMenuCodePage->GetMenuString(0, strMenuText, MF_BYPOSITION);
-		//FTLTRACE(TEXT("OnCodePageChange, nID=%d, strMenuText=%s\n"), nID, strMenuText);
+    BOOL bRet = FALSE;
+    
+    CString strMenuText;
+    CMenu* pMenuCodePage = GetMenu()->GetSubMenu(MENU_INDEX_CODEPAGE);
+    if (pMenuCodePage)
+    {
+        //pMenuCodePage->GetMenuString(0, strMenuText, MF_BYPOSITION);
+        //FTLTRACE(TEXT("OnCodePageChange, nID=%d, strMenuText=%s\n"), nID, strMenuText);
 
-		API_VERIFY(pMenuCodePage->CheckMenuRadioItem(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END
-			,nID, MF_BYCOMMAND|MF_CHECKED));
-	}
+        API_VERIFY(pMenuCodePage->CheckMenuRadioItem(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END
+            ,nID, MF_BYCOMMAND|MF_CHECKED));
+    }
 
-	//TODO:codepage?
-	CLogManager& logManager = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager;
-	switch (nID)
-	{
-	case ID_CODE_PAGE_UTF8:
-		logManager.SetCodepage(CP_UTF8);
-		break;
-	case ID_CODE_PAGE_GB2312:
-		//MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED);
-		logManager.SetCodepage(936); 
-		break;
-	case ID_CODE_PAGE_JAPANESE:
-		logManager.SetCodepage(932);
-		break;
-	case ID_CODE_PAGE_KOREAN:
-		logManager.SetCodepage(949);
-		break;
-	default:
-		FTLASSERT(FALSE);
-		break;
-	}
+    //TODO:codepage?
+    CLogManager& logManager = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager;
+    switch (nID)
+    {
+    case ID_CODE_PAGE_UTF8:
+        logManager.SetCodepage(CP_UTF8);
+        break;
+    case ID_CODE_PAGE_GB2312:
+        //MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED);
+        logManager.SetCodepage(936); 
+        break;
+    case ID_CODE_PAGE_JAPANESE:
+        logManager.SetCodepage(932);
+        break;
+    case ID_CODE_PAGE_KOREAN:
+        logManager.SetCodepage(949);
+        break;
+    default:
+        FTLASSERT(FALSE);
+        break;
+    }
 }

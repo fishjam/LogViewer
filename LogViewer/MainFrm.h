@@ -15,10 +15,10 @@
 class CMainFrame : public CFrameWnd
     , public FTL::IFileFindCallback
 {
-	
+    
 protected: // create from serialization only
-	CMainFrame();
-	DECLARE_DYNCREATE(CMainFrame)
+    CMainFrame();
+    DECLARE_DYNCREATE(CMainFrame)
 
 // Attributes
 public:
@@ -28,39 +28,39 @@ public:
 
 // Overrides
 public:
-	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+    virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 
     //IFileFindCallback
     virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam);
 
 // Implementation
 public:
-	virtual ~CMainFrame();
+    virtual ~CMainFrame();
 #ifdef _DEBUG
-	virtual void AssertValid() const;
-	virtual void Dump(CDumpContext& dc) const;
+    virtual void AssertValid() const;
+    virtual void Dump(CDumpContext& dc) const;
 #endif
 
 protected:  // control bar embedded members
-	CStatusBar      m_wndStatusBar;
-	CToolBar        m_wndToolBar;
-	CSplitterWnd    m_wndIdVertSplitter;
+    CStatusBar      m_wndStatusBar;
+    CToolBar        m_wndToolBar;
+    CSplitterWnd    m_wndIdVertSplitter;
     CSplitterWnd    m_wndVertSplitter;
     CSplitterWnd    m_wndHorzSplitter;
     CStringArray    m_iniFiles;
     CMenu           m_menuIni;
 // Generated message map functions
 protected:
-	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	DECLARE_MESSAGE_MAP()
+    afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+    DECLARE_MESSAGE_MAP()
     virtual BOOL OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext);
 public:
     afx_msg void OnUpdateIndicatorFileCount(CCmdUI *pCmdUI);
     afx_msg void OnUpdateIndicatorThreadCount(CCmdUI* pCmdUI);
     afx_msg void OnUpdateIndicatorLogItemCount(CCmdUI *pCmdUI);
     afx_msg void OnDropFiles(HDROP hDropInfo);
-	afx_msg void OnSettingConfigIniChange(UINT nID);
-	afx_msg void OnCodePageChange(UINT nID);
+    afx_msg void OnSettingConfigIniChange(UINT nID);
+    afx_msg void OnCodePageChange(UINT nID);
 };
 
 

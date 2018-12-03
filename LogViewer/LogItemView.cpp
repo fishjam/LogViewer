@@ -8,22 +8,23 @@
 
 struct strColumnInfo
 {
-	LPCTSTR pszColumnText;
-	int		nColumnWidth;
+    LPCTSTR pszColumnText;
+    int		nColumnWidth;
 };
 
 static strColumnInfo	columnInfos[] = 
 {
-	{TEXT("SeqNum"), 50,},
-	{TEXT("PID"), 50,},
-	{TEXT("TID"), 80,},
-	{TEXT("Time"), 100,},
-	{TEXT("Elapse"), 70,},
-	{TEXT("Level"), 50,},
-	{TEXT("ModuleName"), 20,},
-	{TEXT("FunName"), 20,},
+    {TEXT("SeqNum"), 50,},
+    {TEXT("Machine"), 50,},
+    {TEXT("PID"), 50,},
+    {TEXT("TID"), 80,},
+    {TEXT("Time"), 100,},
+    {TEXT("Elapse"), 70,},
+    {TEXT("Level"), 50,},
+    {TEXT("ModuleName"), 20,},
+    {TEXT("FunName"), 20,},
     {TEXT("SourceFile"), 20,},
-	{TEXT("TraceInfo"), 800,}
+    {TEXT("TraceInfo"), 800,}
 };
 
 static LPCTSTR pszTraceLevel[] = 
@@ -42,10 +43,10 @@ IMPLEMENT_DYNCREATE(CLogItemView, CListView)
 CLogItemView::CLogItemView()
 {
     m_bInited = FALSE;
-	m_SortContentType = type_Sequence;
-	m_bSortAscending = TRUE;
+    m_SortContentType = type_Sequence;
+    m_bSortAscending = TRUE;
     m_dwDefaultStyle |= ( LVS_REPORT | LVS_OWNERDATA );
-	m_ptContextMenuClick.SetPoint(-1, -1);
+    m_ptContextMenuClick.SetPoint(-1, -1);
 }
 
 CLogItemView::~CLogItemView()
@@ -57,14 +58,14 @@ BEGIN_MESSAGE_MAP(CLogItemView, CListView)
     //ON_NOTIFY_RANGE(LVN_COLUMNCLICK,0,0xffff,OnColumnClick)
     //ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
     ON_NOTIFY_REFLECT(NM_CLICK, &CLogItemView::OnNMClick)
-	ON_NOTIFY_REFLECT(NM_DBLCLK, &CLogItemView::OnNMDblclk)
-	ON_COMMAND(ID_DETAILS_HIGHLIGHT_SAME_THREAD, &CLogItemView::OnDetailsHighLightSameThread)
-	ON_COMMAND(ID_DETAILS_COPY_ITEM_TEXT, &CLogItemView::OnDetailsCopyItemText)
+    ON_NOTIFY_REFLECT(NM_DBLCLK, &CLogItemView::OnNMDblclk)
+    ON_COMMAND(ID_DETAILS_HIGHLIGHT_SAME_THREAD, &CLogItemView::OnDetailsHighLightSameThread)
+    ON_COMMAND(ID_DETAILS_COPY_ITEM_TEXT, &CLogItemView::OnDetailsCopyItemText)
     ON_COMMAND(ID_DETAILS_COPY_LINE_TEXT, &CLogItemView::OnDetailsCopyLineText)
     ON_COMMAND(ID_DETAILS_COPY_FULL_LOG, &CLogItemView::OnDetailsCopyFullLog)
-	ON_WM_CONTEXTMENU()
+    ON_WM_CONTEXTMENU()
     ON_WM_ERASEBKGND()
-	ON_NOTIFY_REFLECT(LVN_ITEMCHANGED, &CLogItemView::OnLvnItemchanged)
+    ON_NOTIFY_REFLECT(LVN_ITEMCHANGED, &CLogItemView::OnLvnItemchanged)
 END_MESSAGE_MAP()
 
 
@@ -73,12 +74,12 @@ END_MESSAGE_MAP()
 #ifdef _DEBUG
 void CLogItemView::AssertValid() const
 {
-	CListView::AssertValid();
+    CListView::AssertValid();
 }
 
 void CLogItemView::Dump(CDumpContext& dc) const
 {
-	CListView::Dump(dc);
+    CListView::Dump(dc);
 }
 #endif //_DEBUG
 
@@ -99,9 +100,9 @@ void CLogItemView::OnInitialUpdate()
     {
         ListCtrl.ModifyStyle(LVS_ICON,LVS_REPORT | LVS_OWNERDATA,0);
         DWORD dwExStyle = ListCtrl.GetExtendedStyle();
-		//TODO: 虽然启用 LVS_EX_TRACKSELECT 后可以显示当前选中的行，但滚动时会自动随着鼠标的位置选择
+        //TODO: 虽然启用 LVS_EX_TRACKSELECT 后可以显示当前选中的行，但滚动时会自动随着鼠标的位置选择
         dwExStyle |= LVS_EX_FULLROWSELECT  | LVS_EX_ONECLICKACTIVATE 
-			| LVS_EX_DOUBLEBUFFER|LVS_EX_GRIDLINES; //|LVS_EX_TRACKSELECT;// LVS_EX_INFOTIP
+            | LVS_EX_DOUBLEBUFFER|LVS_EX_GRIDLINES; //|LVS_EX_TRACKSELECT;// LVS_EX_INFOTIP
         ListCtrl.SetExtendedStyle(dwExStyle);
         m_ctlHeader.SubclassWindow(ListCtrl.GetHeaderCtrl()->GetSafeHwnd());
 
@@ -235,7 +236,7 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
     //类似的有 LVIF_STATE(状态), LVIF_IMAGE(图像), LVIF_INDENT, LVIF_PARAM 
     if(pItem->mask & LVIF_TEXT) 
     {
-		FTL::CFConversion conv;
+        FTL::CFConversion conv;
         CString strFormat;
         LogItemPointer pLogItem = logManager.GetDisplayLogItem(pItem->iItem);
         if (!pLogItem)
@@ -248,12 +249,16 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             strFormat.Format(TEXT("%d"),pLogItem->seqNum);
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             break;
+        case type_Machine:
+            strFormat = conv.UTF8_TO_TCHAR(pLogItem->machine.c_str());
+            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
+            break;
         case type_ProcessId:
             strFormat = conv.UTF8_TO_TCHAR(pLogItem->processId.c_str());
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             break;
         case type_ThreadId:
-			strFormat = conv.UTF8_TO_TCHAR(pLogItem->threadId.c_str());
+            strFormat = conv.UTF8_TO_TCHAR(pLogItem->threadId.c_str());
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             break;
         case type_Time:
@@ -291,25 +296,25 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             }
             break;
         case type_ElapseTime:
-			{
-				strFormat.Format(TEXT("%.3f s"), (double)pLogItem->elapseTime * 100 / NANOSECOND_PER_SECOND);
-				StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
-			}
+            {
+                strFormat.Format(TEXT("%.3f s"), (double)pLogItem->elapseTime * 100 / NANOSECOND_PER_SECOND);
+                StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
+            }
             break;
         case type_ModuleName:
-			if (NULL != pLogItem->pszModuleName)
-			{
-				StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszModuleName);
-			}
+            if (NULL != pLogItem->pszModuleName)
+            {
+                StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszModuleName);
+            }
             break;
-		case type_FunName:
-			{
-				if (NULL != pLogItem->pszFunName)
-				{
-					StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszFunName);
-				}
-				break;
-			}
+        case type_FunName:
+            {
+                if (NULL != pLogItem->pszFunName)
+                {
+                    StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszFunName);
+                }
+                break;
+            }
         case type_FileName:
             {
                 if (NULL != pLogItem->pszSrcFileName)
@@ -323,9 +328,9 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,pszTraceLevel[pLogItem->level]);
             break;
         case type_TraceInfo:
-			if (NULL != pLogItem->pszTraceInfo){
-				StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszTraceInfo);
-			}
+            if (NULL != pLogItem->pszTraceInfo){
+                StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, (LPCTSTR)pLogItem->pszTraceInfo);
+            }
             break;
         default:
             ASSERT(FALSE);
@@ -415,12 +420,12 @@ void CLogItemView::OnUpdate(CView* pSender, LPARAM /*lHint*/, CObject* /*pHint*/
 
 void CLogItemView::OnNMClick(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	UNREFERENCED_PARAMETER(pResult);
+    UNREFERENCED_PARAMETER(pResult);
 
-	NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
-	UNREFERENCED_PARAMETER(pNMListView);
+    NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
+    UNREFERENCED_PARAMETER(pNMListView);
 
-	TRACE(TEXT("click at iItem = %d,iSubItem=%d\n"), pNMListView->iItem, pNMListView->iSubItem);
+    TRACE(TEXT("click at iItem = %d,iSubItem=%d\n"), pNMListView->iItem, pNMListView->iSubItem);
 }
 
 void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
@@ -493,33 +498,33 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CLogItemView::OnContextMenu(CWnd* pWnd, CPoint point)
 {
-	//if(KEY_DOWN(VK_CONTROL))
-	{
-		CMenu menuDetails;
-		BOOL bRet = FALSE;
-		API_VERIFY(menuDetails.LoadMenu(IDR_MENU_DETAIL));
-		CMenu* pThreadMenu = menuDetails.GetSubMenu(0);
-		FTLASSERT(pThreadMenu);
-		m_ptContextMenuClick = point;
-		API_VERIFY(pThreadMenu->TrackPopupMenu(TPM_TOPALIGN|TPM_LEFTBUTTON,point.x,point.y,pWnd));
-	}
+    //if(KEY_DOWN(VK_CONTROL))
+    {
+        CMenu menuDetails;
+        BOOL bRet = FALSE;
+        API_VERIFY(menuDetails.LoadMenu(IDR_MENU_DETAIL));
+        CMenu* pThreadMenu = menuDetails.GetSubMenu(0);
+        FTLASSERT(pThreadMenu);
+        m_ptContextMenuClick = point;
+        API_VERIFY(pThreadMenu->TrackPopupMenu(TPM_TOPALIGN|TPM_LEFTBUTTON,point.x,point.y,pWnd));
+    }
 }
 
 void CLogItemView::OnDetailsHighLightSameThread()
 {
-	CLogManager& logManager = GetDocument()->m_FTLogManager;
-	CListCtrl& ListCtrl = GetListCtrl();
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
 
-	POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
-	if (pos != NULL)
-	{
-		int nItem = ListCtrl.GetNextSelectedItem(pos);
-		LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
-		if (pLogItem)
-		{
-			_HighlightSameThread(pLogItem->threadId);
-		}
-	}
+    POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+    if (pos != NULL)
+    {
+        int nItem = ListCtrl.GetNextSelectedItem(pos);
+        LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
+        if (pLogItem)
+        {
+            _HighlightSameThread(pLogItem->threadId);
+        }
+    }
 }
 
 LVHITTESTINFO CLogItemView::GetCurrentSelectInfo()
@@ -537,19 +542,19 @@ LVHITTESTINFO CLogItemView::GetCurrentSelectInfo()
 }
 void CLogItemView::OnDetailsCopyItemText()
 {
-	BOOL bRet = FALSE;
+    BOOL bRet = FALSE;
     CString strText;
 
     CListCtrl& listCtrl = GetListCtrl();
     LVHITTESTINFO lvHistTestInfo = GetCurrentSelectInfo();
-	if (lvHistTestInfo.iItem != -1 && lvHistTestInfo.iSubItem != -1)
-	{
-		strText = listCtrl.GetItemText(lvHistTestInfo.iItem, lvHistTestInfo.iSubItem);
-		if(!strText.IsEmpty())
-		{
-			API_VERIFY(CFSystemUtil::CopyTextToClipboard(strText)); //, m_hWnd);
-		}
-	}
+    if (lvHistTestInfo.iItem != -1 && lvHistTestInfo.iSubItem != -1)
+    {
+        strText = listCtrl.GetItemText(lvHistTestInfo.iItem, lvHistTestInfo.iSubItem);
+        if(!strText.IsEmpty())
+        {
+            API_VERIFY(CFSystemUtil::CopyTextToClipboard(strText)); //, m_hWnd);
+        }
+    }
     if (!bRet)
     {
         FormatMessageBox(m_hWnd, TEXT("CopyText Error"), MB_OK | MB_ICONERROR, 
@@ -612,20 +617,20 @@ void CLogItemView::OnDetailsCopyFullLog()
 
 void CLogItemView::_HighlightSameThread(THREAD_ID_TYPE threadId)
 {
-	CLogManager& logManager = GetDocument()->m_FTLogManager;
-	CListCtrl& ListCtrl = GetListCtrl();
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
 
-	int nTotalCount = ListCtrl.GetItemCount();
-	for (int nItem = 0; nItem < nTotalCount; nItem++)
-	{
-		LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
-		FTLASSERT(pLogItem);
-		if (pLogItem && pLogItem->threadId == threadId)
-		{
-			ListCtrl.SetItemState(nItem,  LVIS_SELECTED, LVIS_SELECTED);
-			ListCtrl.SetSelectionMark(nItem);
-		}
-	}
+    int nTotalCount = ListCtrl.GetItemCount();
+    for (int nItem = 0; nItem < nTotalCount; nItem++)
+    {
+        LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
+        FTLASSERT(pLogItem);
+        if (pLogItem && pLogItem->threadId == threadId)
+        {
+            ListCtrl.SetItemState(nItem,  LVIS_SELECTED, LVIS_SELECTED);
+            ListCtrl.SetSelectionMark(nItem);
+        }
+    }
 }
 
 BOOL CLogItemView::OnEraseBkgnd(CDC* pDC)
@@ -662,17 +667,17 @@ BOOL CLogItemView::OnEraseBkgnd(CDC* pDC)
 
 void CLogItemView::OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
-	// TODO: Add your control notification handler code here
-	*pResult = 0;
-	ATLTRACE(TEXT("OnLvnItemchanged, iItem=%d,iSubItem=%d, uNewState=%d, uOldState=%d\n"), 
-		pNMLV->iItem, pNMLV->iSubItem, pNMLV->uNewState, pNMLV->uOldState);
+    LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+    // TODO: Add your control notification handler code here
+    *pResult = 0;
+    ATLTRACE(TEXT("OnLvnItemchanged, iItem=%d,iSubItem=%d, uNewState=%d, uOldState=%d\n"), 
+        pNMLV->iItem, pNMLV->iSubItem, pNMLV->uNewState, pNMLV->uOldState);
 
-	//会响应三次
-	if (pNMLV->iItem >= 0 
-		&& ((pNMLV->uNewState & (LVIS_FOCUSED | LVIS_SELECTED))!= 0) )
-	{
-		GetDocument()->m_FTLogManager.setActiveItemIndex(pNMLV->iItem);
-		GetDocument()->UpdateAllViews(this);
-	}
+    //会响应三次
+    if (pNMLV->iItem >= 0 
+        && ((pNMLV->uNewState & (LVIS_FOCUSED | LVIS_SELECTED))!= 0) )
+    {
+        GetDocument()->m_FTLogManager.setActiveItemIndex(pNMLV->iItem);
+        GetDocument()->UpdateAllViews(this);
+    }
 }

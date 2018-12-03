@@ -112,8 +112,6 @@ BEGIN
         MENUITEM "Close",                       ID_FILE_CLOSE
         MENUITEM "Reload",                      ID_FILE_RELOAD
         MENUITEM SEPARATOR
-        MENUITEM "Generate Log",                ID_FILE_GENERATE_LOG, INACTIVE
-        MENUITEM SEPARATOR
         MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
         MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
@@ -148,16 +146,6 @@ BEGIN
     END
 END
 
-IDR_MENU_THREAD MENU 
-BEGIN
-    POPUP "Thread"
-    BEGIN
-        MENUITEM "Select All",                  ID_THREAD_SELECT_ALL
-        MENUITEM "UnSelect All",                ID_THREAD_UNSELECT_ALL
-        MENUITEM "Select Reverse",              ID_THREAD_SELECT_REVERSE
-    END
-END
-
 IDR_MENU_DETAIL MENU 
 BEGIN
     POPUP "Tools"
@@ -167,16 +155,6 @@ BEGIN
         MENUITEM "Copy Full Log",               ID_DETAILS_COPY_FULL_LOG
         MENUITEM SEPARATOR
         MENUITEM "Highlight Same Thread",       ID_DETAILS_HIGHLIGHT_SAME_THREAD
-    END
-END
-
-IDR_MENU_PROCESS MENU 
-BEGIN
-    POPUP "Process"
-    BEGIN
-        MENUITEM "Select All",                  ID_PROCESS_SELECT_ALL
-        MENUITEM "UnSelect All",                ID_PROCESS_UNSELECT_ALL
-        MENUITEM "Select Reverse",              ID_PROCESS_SELECT_REVERSE
     END
 END
 

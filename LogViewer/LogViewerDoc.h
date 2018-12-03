@@ -12,8 +12,8 @@
 class CLogViewerDoc : public CDocument
 {
 protected: // create from serialization only
-	CLogViewerDoc();
-	DECLARE_DYNCREATE(CLogViewerDoc)
+    CLogViewerDoc();
+    DECLARE_DYNCREATE(CLogViewerDoc)
 
 // Attributes
 public:
@@ -23,15 +23,16 @@ public:
 
 // Overrides
 public:
-	virtual BOOL OnNewDocument();
-	virtual void Serialize(CArchive& ar);
+    virtual BOOL OnNewDocument();
+    virtual void Serialize(CArchive& ar);
+    virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 
 // Implementation
 public:
-	virtual ~CLogViewerDoc();
+    virtual ~CLogViewerDoc();
 #ifdef _DEBUG
-	virtual void AssertValid() const;
-	virtual void Dump(CDumpContext& dc) const;
+    virtual void AssertValid() const;
+    virtual void Dump(CDumpContext& dc) const;
 #endif
 
 public:
@@ -41,19 +42,16 @@ public:
     void GetFileFilterString(CString & strFilter);
 protected:
     CVsIdeHandler   m_VSIdeHandler;
-    //CLogFilterManager*   m_pLogFilterManager;
-    //typedef FTL::CFPluginMgrT<ILogFilterBase, LogFilterRelease > LogFilterPlugins;
-    //typedef LogFilterPlugins::PluginContainer LogFilterPluginsContainer;
-    //LogFilterPlugins m_logFilterPlugs;
 // Generated message map functions
 protected:
-	DECLARE_MESSAGE_MAP()
+    DECLARE_MESSAGE_MAP()
 public:
+
     afx_msg void OnFileOpen();
     afx_msg void OnFileSave();
-	afx_msg void OnFileClose();
-	afx_msg void OnFileReload();
-    afx_msg void OnFileGenerateLog();
+    afx_msg void OnFileClose();
+    afx_msg void OnFileReload();
+    //afx_msg void OnFileGenerateLog();
     
 };
 

@@ -383,7 +383,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ProcessView.cpp"
+				RelativePath=".\MachinePidTidTreeView.cpp"
 				>
 			</File>
 			<File
@@ -431,10 +431,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ThreadView.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\VsIdeHandler.cpp"
 				>
 			</File>
@@ -477,11 +473,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\MainFrm.h"
+				RelativePath=".\MachinePidTidTreeView.h"
 				>
 			</File>
 			<File
-				RelativePath=".\ProcessView.h"
+				RelativePath=".\MainFrm.h"
 				>
 			</File>
 			<File
@@ -498,10 +494,6 @@
 			</File>
 			<File
 				RelativePath=".\StudioListDlg.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ThreadView.h"
 				>
 			</File>
 			<File

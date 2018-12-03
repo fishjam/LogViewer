@@ -1,12 +1,12 @@
 #include "StdAfx.h"
 #include "LogManager.h"
+#include "LogViewer.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
 
-//函数子
 struct LogItemFilter : public std::unary_function<LogItemPointer, bool>
 {
 public:
@@ -17,49 +17,45 @@ public:
     bool operator()(const LogItemPointer& pItem) const
     {
         BOOL bChecked = m_LogManager.m_TraceLevelDisplay[pItem->level];
-		if (bChecked)
-		{
-			bChecked = m_LogManager.m_AllLogProcessIdsChecked[pItem->processId];
-		}
-		if (bChecked)
+        if (bChecked)
         {
-            bChecked = m_LogManager.m_AllLogThreadIdsChecked[pItem->threadId];
+            bChecked = m_LogManager.IsItemIdChecked(pItem);// .m_AllLogProcessIdsChecked[pItem->processId];
         }
         if (bChecked)
         {
             if (!m_LogManager.m_strLogInfoFilterString.IsEmpty())
             {
-				BOOL bFilterByString = TRUE;
-				if (m_LogManager.m_filterType == ftAny)
-				{
-					bFilterByString = FALSE;
-				}
+                BOOL bFilterByString = TRUE;
+                if (m_LogManager.m_filterType == ftAny)
+                {
+                    bFilterByString = FALSE;
+                }
 
-				CAtlString strFilter = m_LogManager.m_strLogInfoFilterString;
-				//bChecked = FTL::CFStringUtil::IsMatchMask(pItem->pszTraceInfo, m_LogManager.m_strLogInfoFilterString, FALSE);
-				std::list<CAtlString> tokens;
-				FTL::Split(strFilter, TEXT(" "), false, tokens);
-				for(std::list<CAtlString>::iterator iter = tokens.begin(); iter != tokens.end(); ++iter){
-					BOOL bMatch = (StrStrI(pItem->pszTraceInfo, *iter) != NULL);
-					switch (m_LogManager.m_filterType)
-					{
-					case ftAll:
-						bFilterByString &= bMatch;
-						break;
-					case ftAny:
-						bFilterByString |= bMatch;
-						break;
-					case ftNone:
-						bFilterByString &= (!bMatch);
-						break;
-					default:
-						FTLASSERT(FALSE);
-						break;
-					}
-				}
+                CAtlString strFilter = m_LogManager.m_strLogInfoFilterString;
+                //bChecked = FTL::CFStringUtil::IsMatchMask(pItem->pszTraceInfo, m_LogManager.m_strLogInfoFilterString, FALSE);
+                std::list<CAtlString> tokens;
+                FTL::Split(strFilter, TEXT(" "), false, tokens);
+                for(std::list<CAtlString>::iterator iter = tokens.begin(); iter != tokens.end(); ++iter){
+                    BOOL bMatch = (StrStrI(pItem->pszTraceInfo, *iter) != NULL);
+                    switch (m_LogManager.m_filterType)
+                    {
+                    case ftAll:
+                        bFilterByString &= bMatch;
+                        break;
+                    case ftAny:
+                        bFilterByString |= bMatch;
+                        break;
+                    case ftNone:
+                        bFilterByString &= (!bMatch);
+                        break;
+                    default:
+                        FTLASSERT(FALSE);
+                        break;
+                    }
+                }
                 //再根据 m_isIncludeText 的值判断是需要包含文字还是排除文字
                 //bChecked = !( bChecked ^ m_LogManager.m_isIncludeText);
-				bChecked = bFilterByString;
+                bChecked = bFilterByString;
             }
         }
         return (FALSE != bChecked);
@@ -86,13 +82,14 @@ public:
             case type_Sequence:
                 result = pItem1->seqNum - pItem2->seqNum;
                 break;
+            case type_Machine:
+                result = pItem1->machine.compare(pItem2->machine);
+                break;
             case type_ProcessId:
-                //result = pItem1->processId - pItem2->processId;
                 result = pItem1->processId.compare(pItem2->processId);
                 break;
             case type_ThreadId:
-                //result = pItem1->threadId - pItem2->threadId;
-				result = pItem1->threadId.compare(pItem2->threadId);
+                result = pItem1->threadId.compare(pItem2->threadId);
                 break;
             case type_Time:
                 {
@@ -106,16 +103,16 @@ public:
             case type_ElapseTime:
                 result = pItem1->elapseTime - pItem2->elapseTime;
                 break;
-			case type_ModuleName:
-				if(pItem1->pszModuleName && pItem2->pszModuleName){
-					result = _tcscmp(pItem1->pszModuleName,pItem2->pszModuleName);
-				}
-				break;
-			case type_FunName:
-				if(pItem1->pszFunName && pItem2->pszFunName){
-					result = _tcscmp(pItem1->pszFunName,pItem2->pszFunName);
-				}
-				break;
+            case type_ModuleName:
+                if(pItem1->pszModuleName && pItem2->pszModuleName){
+                    result = _tcscmp(pItem1->pszModuleName,pItem2->pszModuleName);
+                }
+                break;
+            case type_FunName:
+                if(pItem1->pszFunName && pItem2->pszFunName){
+                    result = _tcscmp(pItem1->pszFunName,pItem2->pszFunName);
+                }
+                break;
             case type_TraceLevel:
                 result = pItem1->level - pItem2->level;
                 break;
@@ -129,9 +126,9 @@ public:
                 }
                 break;
             case type_TraceInfo:
-				if(pItem1->pszTraceInfo && pItem2->pszTraceInfo){
-					result = _tcscmp(pItem1->pszTraceInfo,pItem2->pszTraceInfo);
-				}
+                if(pItem1->pszTraceInfo && pItem2->pszTraceInfo){
+                    result = _tcscmp(pItem1->pszTraceInfo,pItem2->pszTraceInfo);
+                }
                 break;
             default:
                 FTLASSERT(FALSE);
@@ -166,10 +163,10 @@ CLogManager::CLogManager(void)
     {
         m_TraceLevelDisplay[i] = TRUE;
     }
-	m_codePage = CP_UTF8;
+    m_codePage = CP_UTF8;
     m_fileCount = 0;
-	m_filterType = ftAll;
-	m_activeItemIndex = -1;
+    m_filterType = ftAll;
+    m_activeItemIndex = -1;
 }
 
 CLogManager::~CLogManager(void)
@@ -180,19 +177,14 @@ CLogManager::~CLogManager(void)
 BOOL CLogManager::ClearAllLogItems()
 {
     CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-	m_activeItemIndex = -1;
+    m_activeItemIndex = -1;
     m_threadExecuteTimes.clear();
     m_allInitLogItems.clear();
     m_AllLogItems.clear();
     m_allInitLogItems.clear();
     m_DisplayLogItems.clear();
 
-	m_AllLogProcessIds.clear();
-	m_AllLogProcessIdsChecked.clear();
-
-	m_AllLogThreadIds.clear();
-    m_AllLogThreadIdsChecked.clear();
-	//m_logFilePaths.RemoveAll();
+    m_allMachinePidTidInfos.clear();
     return TRUE;
 }
 
@@ -237,12 +229,12 @@ BOOL CLogManager::SaveLogItems(LPCTSTR pszFilePath, BOOL bAll /* = FALSE */)
 
 BOOL CLogManager::ReloadLogItems()
 {
-	BOOL bRet = FALSE;
-	CStringArray logFilePaths;
-	logFilePaths.Copy(m_logFilePaths);
-	SetLogFiles(logFilePaths);
+    BOOL bRet = FALSE;
+    CStringArray logFilePaths;
+    logFilePaths.Copy(m_logFilePaths);
+    SetLogFiles(logFilePaths);
 
-	return bRet;
+    return bRet;
 }
 
 LONG CLogManager::GetLogFileCount() const
@@ -250,58 +242,32 @@ LONG CLogManager::GetLogFileCount() const
     return m_fileCount;
 }
 
-LONG CLogManager::GetThreadCount() const
-{
-    LONG lCount;
-    {
-        CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-        lCount = (LONG)m_AllLogThreadIds.size();
-    }
-    return lCount;
-}
-
 LONG CLogManager::GetSelectedThreadCount() const
 {
-	LONG lCount = 0;
-	{
-		CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-		for (std::map<THREAD_ID_TYPE, BOOL>::const_iterator iter = m_AllLogThreadIdsChecked.begin();
-			iter != m_AllLogThreadIdsChecked.end();
-			iter++)
-		{
-			if (iter->second)
-			{
-				lCount++;
-			}
-		}
-	}
-	return lCount;
-}
-
-LONG CLogManager::GetProcessCount() const
-{
-	LONG lCount;
-	{
-		CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-		lCount = (LONG)m_AllLogProcessIds.size();
-	}
-	return lCount;
-}
-
-LONG CLogManager::GetThreadIds(AllThreadIdContainer & allThreadIds) const
-{
-    CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-    std::copy(m_AllLogThreadIds.begin(), m_AllLogThreadIds.end(), 
-		std::back_inserter(allThreadIds));
-    return allThreadIds.size();
-}
-
-LONG CLogManager::GetProcessIds(AllProcessIdContainer & allProcessIds) const
-{
-	CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-	std::copy(m_AllLogProcessIds.begin(), m_AllLogProcessIds.end(), 
-		std::back_inserter(allProcessIds));
-	return allProcessIds.size();
+    LONG lCount = 0;
+    {
+        CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+        for (MachinePidTidContainer::const_iterator iterMachine = m_allMachinePidTidInfos.begin();
+            iterMachine != m_allMachinePidTidInfos.end();
+            ++iterMachine)
+        {
+            const PidTidContainer& pidTidContainer = iterMachine->second;
+            for (PidTidContainer::const_iterator iterPid = pidTidContainer.begin();
+                iterPid != pidTidContainer.end();
+                ++iterPid)
+            {
+                const TidContainer& tidContainer = iterPid->second;
+                for (TidContainer::const_iterator iterTid = tidContainer.begin();
+                    iterTid != tidContainer.end();
+                    ++iterTid){
+                        if(iterTid->second.bChecked){
+                            lCount++;
+                        }
+                }
+            }
+        }
+    }
+    return lCount;
 }
 
 LONG CLogManager::GetDisplayLogItemCount() const
@@ -314,59 +280,11 @@ LONG CLogManager::GetDisplayLogItemCount() const
     return lCount;
 }
 
-BOOL CLogManager::IsThreadIdChecked(THREAD_ID_TYPE threadId) const
-{
-    BOOL bChecked = FALSE;
-    {
-        CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-        std::map<THREAD_ID_TYPE, BOOL>::const_iterator iter = m_AllLogThreadIdsChecked.find(threadId);
-        if (iter != m_AllLogThreadIdsChecked.end())
-        {
-            bChecked = iter->second;
-        }
-    }
-    return bChecked;
+BOOL CLogManager::IsItemIdChecked(const LogItemPointer& pItem){
+    ID_INFOS& idInfos = m_allMachinePidTidInfos[pItem->machine][pItem->processId][pItem->threadId];
+    return idInfos.bChecked;
 }
 
-BOOL CLogManager::IsProcessIdChecked(PROCESS_ID_TYPE processId) const
-{
-	BOOL bChecked = FALSE;
-	{
-		CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-		std::map<PROCESS_ID_TYPE, BOOL>::const_iterator iter = m_AllLogProcessIdsChecked.find(processId);
-		if (iter != m_AllLogProcessIdsChecked.end())
-		{
-			bChecked = iter->second;
-		}
-	}
-	return bChecked;
-}
-
-BOOL CLogManager::SetThreadIdChecked(THREAD_ID_TYPE threadId, BOOL bChecked)
-{
-    CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-    BOOL bRet = TRUE;
-
-    if (m_AllLogThreadIdsChecked[threadId] != bChecked)
-    {
-        m_AllLogThreadIdsChecked[threadId] = bChecked;
-        DoFilterLogItems();
-    }
-    return bRet;
-}
-
-BOOL CLogManager::SetProcessIdChecked(PROCESS_ID_TYPE processId, BOOL bChecked)
-{
-	CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-	BOOL bRet = TRUE;
-
-	if (m_AllLogProcessIdsChecked[processId] != bChecked)
-	{
-		m_AllLogProcessIdsChecked[processId] = bChecked;
-		DoFilterLogItems();
-	}
-	return bRet;
-}
 
 BOOL CLogManager::SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay)
 {
@@ -402,7 +320,7 @@ BOOL CLogManager::DoFilterLogItems()
         std::back_inserter(displayItems),LogItemFilter(*this));
     {
         CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-		m_activeItemIndex = -1;
+        m_activeItemIndex = -1;
         m_DisplayLogItems.clear();
         m_DisplayLogItems.reserve(displayItems.size());
         m_DisplayLogItems.assign(displayItems.begin(), displayItems.end());
@@ -425,14 +343,14 @@ const LogItemPointer CLogManager::GetDisplayLogItem(LONG index) const
 }
 
 void CLogManager::setActiveItemIndex(LONG index){
-	m_activeItemIndex = index;
+    m_activeItemIndex = index;
 }
 
 CString CLogManager::getActiveItemTraceInfo(){
-	if (m_activeItemIndex >= 0 && m_activeItemIndex < (LONG)m_DisplayLogItems.size()){
-		return m_DisplayLogItems.at(m_activeItemIndex)->pszTraceInfo;
-	}
-	return TEXT("");
+    if (m_activeItemIndex >= 0 && m_activeItemIndex < (LONG)m_DisplayLogItems.size()){
+        return m_DisplayLogItems.at(m_activeItemIndex)->pszTraceInfo;
+    }
+    return TEXT("");
 }
 
 BOOL CLogManager::SortDisplayItem(LogItemContentType SortContentType, BOOL bSortAscending)
@@ -452,26 +370,26 @@ BOOL CLogManager::SortDisplayItem(LogItemContentType SortContentType, BOOL bSort
     return TRUE;
 }
 
-LONG CLogManager::GenerateLog(LPCTSTR pszFilePath, LONG logCount)
-{
-    //FTL::CFAnsiFile file(TextFileEncoding::tfeUnknown);
-    LONG nGenerateCount = 0;
-    return nGenerateCount;
-}
+// LONG CLogManager::GenerateLog(LPCTSTR pszFilePath, LONG logCount)
+// {
+//     //FTL::CFAnsiFile file(TextFileEncoding::tfeUnknown);
+//     LONG nGenerateCount = 0;
+//     return nGenerateCount;
+// }
 
 BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
 {
     CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-	BOOL bRet = FALSE;
+    BOOL bRet = FALSE;
 
-	//加载配置文件
-	//API_VERIFY(m_logConfig.LoadConfig(TEXT("LogViewer.ini")));
-	CWaitCursor waitCursor;
+    //加载配置文件
+    //API_VERIFY(m_logConfig.LoadConfig(TEXT("LogViewer.ini")));
+    CWaitCursor waitCursor;
 
-	bRet = CheckFTLogFiles(logFilePaths);
+    bRet = logFilePaths.GetSize() > 0;
     if (bRet)
     {
-        m_fileCount = logFilePaths.GetCount();
+        m_fileCount = (LONG)logFilePaths.GetCount();
 
         ClearAllLogItems(); //先清除以前的
         CString strExt = logFilePaths[0].Mid(logFilePaths[0].ReverseFind(_T('.')));
@@ -479,14 +397,15 @@ BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
         INT_PTR logFileCount = logFilePaths.GetCount();
         for (INT_PTR index = 0; bRet && index < logFileCount; index++)
         {
-            if (0 == strExt.CompareNoCase(TEXT(".ftl")))
+//             if (0 == strExt.CompareNoCase(TEXT(".ftl")))
+//             {
+//                 bRet = ReadFTLogFile(logFilePaths[index]);
+//             }
+//             else
             {
-                bRet = ReadFTLogFile(logFilePaths[index]);
-            }
-			else
-			{
                 bRet = ReadTraceLogFile(logFilePaths[index]);
             }
+            theApp.AddToRecentFileList(logFilePaths[index]);
         }
     }
     if (bRet)
@@ -497,251 +416,262 @@ BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
         m_DisplayLogItems.assign(m_AllLogItems.begin(),m_AllLogItems.end());
         //copy(m_AllLogItems.begin(),m_AllLogItems.end(),back_ins_itr(m_DisplayLogItems.begin()));
 
-		m_logFilePaths.Copy(logFilePaths);
+        m_logFilePaths.Copy(logFilePaths);
 
-		AfxGetMainWnd()->SetWindowText(logFilePaths.GetAt(0));
+        AfxGetMainWnd()->SetWindowText(logFilePaths.GetAt(0));
     }
     return bRet;
 }
 
-BOOL CLogManager::CheckFTLogFiles(const CStringArray &logFilePaths)
-{
-    BOOL bRet = FALSE;
-    if (logFilePaths.GetSize() > 0)
-    {
-		bRet = TRUE;
-    }
-    return bRet;
-}
+// BOOL CLogManager::CheckFTLogFiles(const CStringArray &logFilePaths)
+// {
+//     BOOL bRet = FALSE;
+//     if (logFilePaths.GetSize() > 0)
+//     {
+//         bRet = TRUE;
+//     }
+//     return bRet;
+// }
 
-BOOL CLogManager::ReadFTLogFile(LPCTSTR pszFilePath)
-{
-    BOOL bRet = FALSE;
-    CFile file;
-    API_VERIFY(file.Open(pszFilePath,CFile::modeRead | CFile::shareDenyWrite |CFile::typeBinary));
-    if (bRet)
-    {
-		LONGLONG llLastTime = 0;
-        do 
-        {
-            if (file.GetLength() < (sizeof(CFFastTrace::FTFILEHEADER) + sizeof(CFFastTrace::FTDATA)))
-            {
-                FTLASSERT(FALSE); //至少应该写一个FTDATA
-                bRet = FALSE;
-                break;
-            }
-            UINT readCount = 0;
-            CFFastTrace::FTFILEHEADER fileHeader = {0};
-            readCount = file.Read(&fileHeader,sizeof(fileHeader));
-            API_VERIFY(readCount == sizeof(fileHeader));
-            FTLASSERT(FTFILESIG == fileHeader.dwSig);  //检查是否是 FTLog文件
-            if (FTFILESIG != fileHeader.dwSig)
-            {
-                bRet = FALSE;
-                break;
-            }
-            FTLTRACE(TEXT("ReadFTLogFile,file = %s, ItemCount = %d\n"),pszFilePath,fileHeader.lItemCount);
-#if 0
-            m_AllLogProcessIds.push_back(fileHeader.lPID);
-            m_AllLogProcessIdsChecked[fileHeader.lPID] = TRUE;
-			m_AllLogThreadIds.push_back(fileHeader.lTID);
-            m_AllLogThreadIdsChecked[fileHeader.lTID] = TRUE;  //默认都是选择的(不过滤)
-#endif
-            //m_AllFtDatas.resize(m_AllFtDatas.size() + fileHeader.lItemCount);   //提前分配空间
-			DWORD dwFtDataSize = sizeof(FTL::CFFastTrace::FTDATA) - sizeof(LPCTSTR);  //不要读最后的字符串指针
-            //for (LONG lReadItemCount = 0; lReadItemCount < fileHeader.lItemCount; lReadItemCount++)
-			while (bRet)
-            {
-                LogItemPointer pLogItem(new LogItem);
-				pLogItem->size = sizeof(LogItem);
-
-				FTL::CFFastTrace::FTDATA dataItem = {0};
-                //读入每一个FTDATA的信息
-                readCount = file.Read(&dataItem, dwFtDataSize); 
-				API_VERIFY_EXCEPT1(readCount == dwFtDataSize, ERROR_SUCCESS);        //错误处理
-				if (readCount != dwFtDataSize)
-				{
-					if (readCount == 0 && GetLastError() == ERROR_SUCCESS)
-					{
-						//Read End
-						bRet = TRUE;
-						break;
-					}
-					FTLTRACEEX(FTL::tlWarn, TEXT("Read FTL Log Info Fail, want=%d, read=%d\n"),
-						dwFtDataSize, readCount);
-					break;
-				}
-
-				FTLASSERT(dataItem.lSeqNum > 0);				
-				FTLASSERT(dataItem.nTraceInfoLen > 0);
-				if (dataItem.nTraceInfoLen <= 0)
-				{
-					FTLTRACEEX(FTL::tlWarn, TEXT("nTraceInfoLen=%d\n"),
-						dataItem.nTraceInfoLen);
-					bRet = FALSE;
-					break;
-				}
-
-				pLogItem->seqNum = dataItem.lSeqNum;
-				pLogItem->level = dataItem.level;
-
-                //TODO:convert time
-				SYSTEMTIME	curSysTime = {0};
-				FileTimeToSystemTime(&dataItem.stTime, &curSysTime);
-
-				pLogItem->time = MAKELONGLONG(dataItem.stTime.dwLowDateTime, dataItem.stTime.dwHighDateTime);
-				pLogItem->traceInfoLen = dataItem.nTraceInfoLen;
-				pLogItem->processId = fileHeader.lPID;
-				pLogItem->threadId = fileHeader.lTID;
-				
-                
-                pLogItem->pszTraceInfo = new WCHAR[pLogItem->traceInfoLen]; //保存的结果始终都用 WCHAR 的(ANSI的转换后也会变大)
-                ZeroMemory((LPVOID)pLogItem->pszTraceInfo, pLogItem->traceInfoLen * sizeof(WCHAR));
-                LPVOID pVoidReadBuf = (LPVOID)pLogItem->pszTraceInfo;  //先设置读取缓存的值
-//#ifndef UNICODE 
-                //if (fileHeader.bIsUnicode) //如果是非UNICODE编译方式，但 File 是Unicode的，需要重新分配缓存
-                //{
-                //    pVoidReadBuf = new WCHAR[pLogItem->nTraceInfoLen];
-                //    ZeroMemory(pVoidReadBuf, pLogItem->nTraceInfoLen * sizeof(WCHAR));
-                //}
-//#endif
-                DWORD dwCharSize = 0;
-                if(fileHeader.bIsUnicode)
-                {
-                    dwCharSize = sizeof(WCHAR);
-                }
-                else
-                {
-                    dwCharSize = sizeof(CHAR);
-                }
-
-                //读入FTDATA关联的字符串
-                readCount = file.Read(pVoidReadBuf,pLogItem->traceInfoLen * dwCharSize);
-                API_VERIFY((LONG)readCount == (LONG)(pLogItem->traceInfoLen * dwCharSize));                //错误处理
-				if (!bRet)
-				{
-					break;
-				}
-                if (FALSE == fileHeader.bIsUnicode) //File 是非Unicode的，需要转换成Unicode字符串
-                {
-                    ASSERT(FALSE);
-                }
-
-                //FTLTRACE(TEXT("pFTData->pszTraceInfo(%d) = %s"),lReadItemCount,pLogItem->pszTraceInfo);
-                //pLogItem->processId = fileHeader.lPID;
-                //pLogItem->threadId = fileHeader.lTID;
-				if (llLastTime == 0)
-				{
-					pLogItem->elapseTime = 0;
-				}
-				else
-				{
-					pLogItem->elapseTime = pLogItem->time - llLastTime;
-				}
-				llLastTime = pLogItem->time;
-                //加入队列
-                m_allInitLogItems.push_back(pLogItem);
-            }
-        } while (FALSE);
-        file.Close();
-    }
-    return bRet;
-}
+// BOOL CLogManager::ReadFTLogFile(LPCTSTR pszFilePath)
+// {
+//     BOOL bRet = FALSE;
+//     CFile file;
+//     API_VERIFY(file.Open(pszFilePath,CFile::modeRead | CFile::shareDenyWrite |CFile::typeBinary));
+//     if (bRet)
+//     {
+//         LONGLONG llLastTime = 0;
+//         do 
+//         {
+//             if (file.GetLength() < (sizeof(CFFastTrace::FTFILEHEADER) + sizeof(CFFastTrace::FTDATA)))
+//             {
+//                 FTLASSERT(FALSE); //至少应该写一个FTDATA
+//                 bRet = FALSE;
+//                 break;
+//             }
+//             UINT readCount = 0;
+//             CFFastTrace::FTFILEHEADER fileHeader = {0};
+//             readCount = file.Read(&fileHeader,sizeof(fileHeader));
+//             API_VERIFY(readCount == sizeof(fileHeader));
+//             FTLASSERT(FTFILESIG == fileHeader.dwSig);  //检查是否是 FTLog文件
+//             if (FTFILESIG != fileHeader.dwSig)
+//             {
+//                 bRet = FALSE;
+//                 break;
+//             }
+//             FTLTRACE(TEXT("ReadFTLogFile,file = %s, ItemCount = %d\n"),pszFilePath,fileHeader.lItemCount);
+// #if 0
+//             m_AllLogProcessIds.push_back(fileHeader.lPID);
+//             m_AllLogProcessIdsChecked[fileHeader.lPID] = TRUE;
+//             m_AllLogThreadIds.push_back(fileHeader.lTID);
+//             m_AllLogThreadIdsChecked[fileHeader.lTID] = TRUE;  //默认都是选择的(不过滤)
+// #endif
+//             //m_AllFtDatas.resize(m_AllFtDatas.size() + fileHeader.lItemCount);   //提前分配空间
+//             DWORD dwFtDataSize = sizeof(FTL::CFFastTrace::FTDATA) - sizeof(LPCTSTR);  //不要读最后的字符串指针
+//             //for (LONG lReadItemCount = 0; lReadItemCount < fileHeader.lItemCount; lReadItemCount++)
+//             while (bRet)
+//             {
+//                 LogItemPointer pLogItem(new LogItem);
+//                 pLogItem->size = sizeof(LogItem);
+// 
+//                 FTL::CFFastTrace::FTDATA dataItem = {0};
+//                 //读入每一个FTDATA的信息
+//                 readCount = file.Read(&dataItem, dwFtDataSize); 
+//                 API_VERIFY_EXCEPT1(readCount == dwFtDataSize, ERROR_SUCCESS);        //错误处理
+//                 if (readCount != dwFtDataSize)
+//                 {
+//                     if (readCount == 0 && GetLastError() == ERROR_SUCCESS)
+//                     {
+//                         //Read End
+//                         bRet = TRUE;
+//                         break;
+//                     }
+//                     FTLTRACEEX(FTL::tlWarn, TEXT("Read FTL Log Info Fail, want=%d, read=%d\n"),
+//                         dwFtDataSize, readCount);
+//                     break;
+//                 }
+// 
+//                 FTLASSERT(dataItem.lSeqNum > 0);				
+//                 FTLASSERT(dataItem.nTraceInfoLen > 0);
+//                 if (dataItem.nTraceInfoLen <= 0)
+//                 {
+//                     FTLTRACEEX(FTL::tlWarn, TEXT("nTraceInfoLen=%d\n"),
+//                         dataItem.nTraceInfoLen);
+//                     bRet = FALSE;
+//                     break;
+//                 }
+// 
+//                 pLogItem->seqNum = dataItem.lSeqNum;
+//                 pLogItem->level = dataItem.level;
+// 
+//                 //TODO:convert time
+//                 SYSTEMTIME	curSysTime = {0};
+//                 FileTimeToSystemTime(&dataItem.stTime, &curSysTime);
+// 
+//                 pLogItem->time = MAKELONGLONG(dataItem.stTime.dwLowDateTime, dataItem.stTime.dwHighDateTime);
+//                 pLogItem->traceInfoLen = dataItem.nTraceInfoLen;
+//                 pLogItem->processId = fileHeader.lPID;
+//                 pLogItem->threadId = fileHeader.lTID;
+//                 
+//                 
+//                 pLogItem->pszTraceInfo = new WCHAR[pLogItem->traceInfoLen]; //保存的结果始终都用 WCHAR 的(ANSI的转换后也会变大)
+//                 ZeroMemory((LPVOID)pLogItem->pszTraceInfo, pLogItem->traceInfoLen * sizeof(WCHAR));
+//                 LPVOID pVoidReadBuf = (LPVOID)pLogItem->pszTraceInfo;  //先设置读取缓存的值
+// //#ifndef UNICODE 
+//                 //if (fileHeader.bIsUnicode) //如果是非UNICODE编译方式，但 File 是Unicode的，需要重新分配缓存
+//                 //{
+//                 //    pVoidReadBuf = new WCHAR[pLogItem->nTraceInfoLen];
+//                 //    ZeroMemory(pVoidReadBuf, pLogItem->nTraceInfoLen * sizeof(WCHAR));
+//                 //}
+// //#endif
+//                 DWORD dwCharSize = 0;
+//                 if(fileHeader.bIsUnicode)
+//                 {
+//                     dwCharSize = sizeof(WCHAR);
+//                 }
+//                 else
+//                 {
+//                     dwCharSize = sizeof(CHAR);
+//                 }
+// 
+//                 //读入FTDATA关联的字符串
+//                 readCount = file.Read(pVoidReadBuf,pLogItem->traceInfoLen * dwCharSize);
+//                 API_VERIFY((LONG)readCount == (LONG)(pLogItem->traceInfoLen * dwCharSize));                //错误处理
+//                 if (!bRet)
+//                 {
+//                     break;
+//                 }
+//                 if (FALSE == fileHeader.bIsUnicode) //File 是非Unicode的，需要转换成Unicode字符串
+//                 {
+//                     ASSERT(FALSE);
+//                 }
+// 
+//                 //FTLTRACE(TEXT("pFTData->pszTraceInfo(%d) = %s"),lReadItemCount,pLogItem->pszTraceInfo);
+//                 //pLogItem->processId = fileHeader.lPID;
+//                 //pLogItem->threadId = fileHeader.lTID;
+//                 if (llLastTime == 0)
+//                 {
+//                     pLogItem->elapseTime = 0;
+//                 }
+//                 else
+//                 {
+//                     pLogItem->elapseTime = pLogItem->time - llLastTime;
+//                 }
+//                 llLastTime = pLogItem->time;
+//                 //加入队列
+//                 m_allInitLogItems.push_back(pLogItem);
+//             }
+//         } while (FALSE);
+//         file.Close();
+//     }
+//     return bRet;
+// }
 
 int CLogManager::_ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage)
 {
-    int srcLenth = srcInfo.length();
-    pszDest = new WCHAR[srcLenth + 1];
-    ZeroMemory((void*)pszDest, sizeof(WCHAR) * (srcLenth +1));
-    MultiByteToWideChar(codePage, 0, srcInfo.c_str(), -1, (LPWSTR)pszDest, srcLenth);
-    return srcLenth;
+    int srcLength = (int)srcInfo.length();
+    pszDest = new WCHAR[srcLength + 1];
+    ZeroMemory((void*)pszDest, sizeof(WCHAR) * (srcLength +1));
+    MultiByteToWideChar(codePage, 0, srcInfo.c_str(), -1, (LPWSTR)pszDest, srcLength);
+    return srcLength;
 }
+
+LPCTSTR CLogManager::_CopyItemInfo(LPCTSTR pszSource){
+    LPTSTR pszDest = NULL;
+    if (pszSource != NULL){
+        size_t srcLength = _tcslen(pszSource);
+        pszDest = new WCHAR[srcLength + 1];
+        _tcsncpy(pszDest, pszSource, srcLength);
+        pszDest[srcLength] = TEXT('\0');
+    }
+    return pszDest;
+}
+
 
 LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem)
 {
-	std::tr1::smatch regularResults;
-	bool result = std::tr1::regex_match(strOneLog, regularResults, reg);
-	LogItemPointer pItem(new LogItem);
+    std::tr1::smatch regularResults;
+    bool result = std::tr1::regex_match(strOneLog, regularResults, reg);
+    LogItemPointer pItem(new LogItem);
 
     _ConvertItemInfo(strOneLog, pItem->pszFullLog, m_codePage);
     pItem->level = FTL::tlTrace;
-	if (result) //success
-	{
-		if (m_logConfig.m_nItemTime != INVLIAD_ITEM_MAP)
-		{
-			std::string strTime = std::string(regularResults[m_logConfig.m_nItemTime]);
-			if (!m_logConfig.m_strTimeFormat.IsEmpty())
-			{
-				SYSTEMTIME st = {0};
-				GetLocalTime(&st);
-				int microSecond = 0;//, ignore, zooHour = 0, zooMinute = 0;
-				if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
-					|| 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
-					)
-				{
-					m_logConfig.m_dateTimeType = dttDateTime;
-					//2017-06-12 18:21:34.193
-					sscanf_s(strTime.c_str(), "%4d-%2d-%2d%*c%2d:%2d:%2d%*c%3d",
-						&st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = microSecond;
-				}
+    if (result) //success
+    {
+        if (m_logConfig.m_nItemTime != INVLIAD_ITEM_MAP)
+        {
+            std::string strTime = std::string(regularResults[m_logConfig.m_nItemTime]);
+            if (!m_logConfig.m_strTimeFormat.IsEmpty())
+            {
+                SYSTEMTIME st = {0};
+                GetLocalTime(&st);
+                int microSecond = 0;//, ignore, zooHour = 0, zooMinute = 0;
+                if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
+                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
+                    )
+                {
+                    m_logConfig.m_dateTimeType = dttDateTime;
+                    //2017-06-12 18:21:34.193
+                    sscanf_s(strTime.c_str(), "%4d-%2d-%2d%*c%2d:%2d:%2d%*c%3d",
+                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
+                    st.wMilliseconds = (WORD)microSecond;
+                }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
-					m_logConfig.m_dateTimeType = dttDateTime;
+                    m_logConfig.m_dateTimeType = dttDateTime;
                     sscanf_s(strTime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d%",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))){
-					m_logConfig.m_dateTimeType = dttTime;
+                    m_logConfig.m_dateTimeType = dttTime;
                     sscanf_s(strTime.c_str(), "%2d:%2d:%2d%",
                         &st.wHour, &st.wMinute, &st.wSecond);
                 }
-				else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
-					m_logConfig.m_dateTimeType = dttTime;
-					sscanf_s(strTime.c_str(), "%2d:%2d:%2d%*c%3d",
-						&st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = microSecond;
-				}
-				else{
-					FTLASSERT(FALSE);
-				}
+                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
+                    m_logConfig.m_dateTimeType = dttTime;
+                    sscanf_s(strTime.c_str(), "%2d:%2d:%2d%*c%3d",
+                        &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
+                    st.wMilliseconds = (WORD)microSecond;
+                }
+                else{
+                    FTLASSERT(FALSE);
+                }
                 FILETIME localFileTime = {0};
                 SystemTimeToFileTime(&st,&localFileTime);
-				pItem->time = *((LONGLONG*)&localFileTime);// ((((st.wHour * 60) + st.wMinute) * 60) + st.wSecond)* 1000 + microSecond;
-				if (m_logConfig.m_dateTimeType == dttTime)
-				{
-					pItem->time %= MIN_TIME_WITH_DAY_INFO;
-				}
-			}
+                pItem->time = *((LONGLONG*)&localFileTime);// ((((st.wHour * 60) + st.wMinute) * 60) + st.wSecond)* 1000 + microSecond;
+                if (m_logConfig.m_dateTimeType == dttTime)
+                {
+                    pItem->time %= MIN_TIME_WITH_DAY_INFO;
+                }
+            }
+        }
 
-		}
-		if (m_logConfig.m_nItemLevel != INVLIAD_ITEM_MAP)
-		{
-			std::string strLevel = std::string(regularResults[m_logConfig.m_nItemLevel]);
-			//std::replace_if(strLevel.begin(), strLevel.end(), std::bind2nd(std::equal_to<char>(), '\s'), '');
-			FTL::Trim(strLevel);
-			pItem->level = m_logConfig.GetTraceLevelByText(strLevel);
-		}
-
-		if (m_logConfig.m_nItemPId != INVLIAD_ITEM_MAP)
-		{
+        if (m_logConfig.m_nItemLevel != INVLIAD_ITEM_MAP){
+            std::string strLevel = std::string(regularResults[m_logConfig.m_nItemLevel]);
+            FTL::Trim(strLevel);
+            pItem->level = m_logConfig.GetTraceLevelByText(strLevel);
+        }
+        if (m_logConfig.m_nItemMachine != INVLIAD_ITEM_MAP){
+            std::string strMachine = std::string(regularResults[m_logConfig.m_nItemMachine]);
+            pItem->machine = FTL::Trim(strMachine);
+        }
+        if (m_logConfig.m_nItemPId != INVLIAD_ITEM_MAP){
             std::string strPid = std::string(regularResults[m_logConfig.m_nItemPId]);
             pItem->processId = FTL::Trim(strPid);
-			//pItem->processId = atoi(std::string(regularResults[m_logConfig.m_nItemPId]).c_str());
-		}
-		if (m_logConfig.m_nItemTId != INVLIAD_ITEM_MAP)
-		{
-			std::string strTid = std::string(regularResults[m_logConfig.m_nItemTId]);
-			pItem->threadId = FTL::Trim(strTid);
-		}
-		if (m_logConfig.m_nItemModule != INVLIAD_ITEM_MAP)
-		{
-			pItem->moduleNameLen = _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemModule]), pItem->pszModuleName, m_codePage);
-		}
-		if (m_logConfig.m_nItemFun != INVLIAD_ITEM_MAP)
-		{
-			_ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemFun]), pItem->pszFunName, m_codePage);
-		}
+        }
+        if (m_logConfig.m_nItemTId != INVLIAD_ITEM_MAP)
+        {
+            std::string strTid = std::string(regularResults[m_logConfig.m_nItemTId]);
+            pItem->threadId = FTL::Trim(strTid);
+        }
+        if (m_logConfig.m_nItemModule != INVLIAD_ITEM_MAP)
+        {
+            pItem->moduleNameLen = _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemModule]), pItem->pszModuleName, m_codePage);
+        }
+        if (m_logConfig.m_nItemFun != INVLIAD_ITEM_MAP)
+        {
+            _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemFun]), pItem->pszFunName, m_codePage);
+        }
         if (m_logConfig.m_nItemFile != INVLIAD_ITEM_MAP)
         {
             _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemFile]), pItem->pszSrcFileName, m_codePage);
@@ -750,22 +680,23 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         {
             pItem->srcFileline = atoi(std::string(regularResults[m_logConfig.m_nItemLine]).c_str());
         }
-		if (m_logConfig.m_nItemLog != INVLIAD_ITEM_MAP)
-		{
-			pItem->traceInfoLen = _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemLog]), pItem->pszTraceInfo, m_codePage);
-		}
+        if (m_logConfig.m_nItemLog != INVLIAD_ITEM_MAP)
+        {
+            pItem->traceInfoLen = _ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemLog]), pItem->pszTraceInfo, m_codePage);
+        }
 
-		return pItem;
-	}
-	if (preLogItem)
-	{
-		pItem->level = preLogItem->level;
-		pItem->processId = preLogItem->processId;
-		pItem->threadId = preLogItem->threadId;
-		pItem->time = preLogItem->time;
-	}
-	pItem->traceInfoLen = _ConvertItemInfo(strOneLog, pItem->pszTraceInfo, m_codePage);
-	return pItem;
+        return pItem;
+    }
+    if (preLogItem)
+    {
+        pItem->level = preLogItem->level;
+        pItem->machine = preLogItem->machine;
+        pItem->processId = preLogItem->processId;
+        pItem->threadId = preLogItem->threadId;
+        pItem->time = preLogItem->time;
+    }
+    pItem->traceInfoLen = _ConvertItemInfo(strOneLog, pItem->pszTraceInfo, m_codePage);
+    return pItem;
 }
 
 BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
@@ -777,15 +708,15 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
     {
         std::string strOneLog;
         UINT readCount = 1;
-		std::set<PROCESS_ID_TYPE> processIdsContqainer;
-		std::set<THREAD_ID_TYPE> threadIdsContainer;
+        std::set<PROCESS_ID_TYPE> processIdsContqainer;
+        std::set<THREAD_ID_TYPE> threadIdsContainer;
 
-		LogItemPointer preLogItem;
+        LogItemPointer preLogItem;
 
         try{
             const std::tr1::regex regularPattern(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular));
 
-            while(getline(inFile, strOneLog, '\n'))
+            while(getline(inFile, strOneLog))
             {
                 if (readCount == 1 && strOneLog.length() > 3)
                 {
@@ -799,49 +730,26 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                         strOneLog.erase(0, 3);
                     }
                 }
+                if (strOneLog.length() > 0)
+                {
+                    //去除最后的 "\r 或 \n", 避免正则表达式解析失败.
+                    bool needRemove = false;
+                    do 
+                    {
+                        unsigned char cLast = strOneLog.at(strOneLog.length() - 1);
+                        needRemove = cLast == '\r' || cLast == '\n';
+                        if (needRemove)
+                        {
+                            strOneLog.erase(strOneLog.length() - 1);
+                        }
+                    } while (needRemove);
+                }
                 LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, preLogItem);
                 preLogItem = pLogItem;
                 if (pLogItem)
                 {
-                    if (processIdsContqainer.find(pLogItem->processId) == processIdsContqainer.end())
-                    {
-                        processIdsContqainer.insert(pLogItem->processId);
-                        m_AllLogProcessIds.push_back(pLogItem->processId);
-                        m_AllLogProcessIdsChecked[pLogItem->processId] = TRUE;  //默认都是选择的(不过滤)
-                    }
-
-                    //PIdTIdType idType(pLogItem->processId, pLogItem->threadId);
-                    if (threadIdsContainer.find(pLogItem->threadId) == threadIdsContainer.end())
-                    {
-                        threadIdsContainer.insert(pLogItem->threadId);
-                        m_AllLogThreadIds.push_back(pLogItem->threadId);
-                        m_AllLogThreadIdsChecked[pLogItem->threadId] = TRUE;  //默认都是选择的(不过滤)
-                    }
-
-                    PIdTIdType idType(pLogItem->processId, pLogItem->threadId);
-                    ThreadExecuteTimeContainer::iterator iter = m_threadExecuteTimes.find(idType);
-                    //LONG lNewTime = MAKELONG(pLogItem->stTime.dwHighDateTime, pLogItem->stTime.dwLowDateTime);
-
-                    if (m_threadExecuteTimes.end() == iter )
-                    {
-                        iter = m_threadExecuteTimes.insert(ThreadExecuteTimeContainer::value_type(idType, pLogItem->time)).first;
-                        pLogItem->elapseTime = 0;
-                    }
-                    else
-                    {
-                        pLogItem->elapseTime = pLogItem->time - iter->second;
-                        iter->second = pLogItem->time;
-                    }
-#if 0
-                    CTime newTime(pLogItem->time);
-                    CTime oldTime(iter->second);
-                    CTimeSpan diffTime = newTime - oldTime;
-                    pLogItem->llElapseTime = diffTime.GetTotalSeconds();
-#endif
-                    iter->second = pLogItem->time;
+                    _AppendLogItem(pLogItem);
                     pLogItem->seqNum = readCount;
-
-                    m_allInitLogItems.push_back(pLogItem);
                 }
                 readCount++; //放到这个地方来，保证即使一行日志读取失败，SeqNum还是和文件的行数对应
             }
@@ -857,6 +765,21 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
     return bRet;
 }
 
+void CLogManager::_AppendLogItem(LogItemPointer& pLogItem){
+    //MachinePIdTIdType idType(pLogItem->machine, pLogItem->processId, pLogItem->threadId);
+    ID_INFOS &idInfos = m_allMachinePidTidInfos[pLogItem->machine][pLogItem->processId][pLogItem->threadId];
+    if (!idInfos.bInited){ //第一次
+        pLogItem->elapseTime = 0;
+        idInfos.lastTimeStamp = pLogItem->time;
+        idInfos.bInited = TRUE;
+    } else {
+        pLogItem->elapseTime = pLogItem->time - idInfos.lastTimeStamp;
+        idInfos.lastTimeStamp = pLogItem->time;
+    }
+
+    m_allInitLogItems.push_back(pLogItem);
+}
+
 //花费时间 改为计算显示出来的同线程时间差
 BOOL CLogManager::_CalcThreadElpaseTime(LogItemArrayType& logItems)
 {
@@ -868,7 +791,7 @@ BOOL CLogManager::_CalcThreadElpaseTime(LogItemArrayType& logItems)
     {
         LogItemPointer& pLogItem = *iterItem;
 
-		PIdTIdType idType(pLogItem->processId, pLogItem->threadId);
+        MachinePIdTIdType idType(pLogItem->machine, pLogItem->processId, pLogItem->threadId);
         ThreadExecuteTimeContainer::iterator iterElapse = threadExecuteTimes.find(idType);
         if (threadExecuteTimes.end() == iterElapse )
         {

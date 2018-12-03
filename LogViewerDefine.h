@@ -9,20 +9,29 @@
 //time 现在的单位是 FILETIME(100ns)
 #define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
+#define DEFAULT_LOCAL_MACHINE       "local"
 
+typedef std::string MACHINE_NAME_TYPE;
 typedef std::string THREAD_ID_TYPE;
 typedef std::string PROCESS_ID_TYPE;
 
-struct PIdTIdType{
-	PIdTIdType(PROCESS_ID_TYPE pid, THREAD_ID_TYPE tid){
-		this->pid = pid;
-		this->tid = tid;
-	}
-	PROCESS_ID_TYPE pid;
-	THREAD_ID_TYPE  tid;
-	bool operator < (const PIdTIdType & other) const{
-		//COMPARE_MEM_LESS(pid, other);
-		//COMPARE_MEM_LESS(tid, other);
+struct MachinePIdTIdType{
+    MachinePIdTIdType(MACHINE_NAME_TYPE machine, PROCESS_ID_TYPE pid, THREAD_ID_TYPE tid){
+        this->machine = machine;
+        this->pid = pid;
+        this->tid = tid;
+    }
+    MACHINE_NAME_TYPE machine;
+    PROCESS_ID_TYPE pid;
+    THREAD_ID_TYPE  tid;
+    bool operator < (const MachinePIdTIdType & other) const{
+        int machineCompare = machine.compare(other.machine);
+        if (machineCompare < 0) { 
+            return true;
+        } else if(machineCompare > 0){
+            return false;
+        }
+
         int pidCompare = pid.compare(other.pid);
         if( pidCompare < 0){
             return true;
@@ -30,21 +39,35 @@ struct PIdTIdType{
             return false;
         }
 
-		int tidCompare = tid.compare(other.tid);
-		if( tidCompare < 0){
-			return true;
-		}else if(tidCompare > 0){
-			return false;
-		}
-		return false;
-	}
+        int tidCompare = tid.compare(other.tid);
+        if( tidCompare < 0){
+            return true;
+        }else if(tidCompare > 0){
+            return false;
+        }
+        return false;
+    }
 };
 
-typedef std::list<THREAD_ID_TYPE> AllThreadIdContainer;
-typedef AllThreadIdContainer::iterator AllThreadIdContainerIter;
+struct ID_INFOS{
+    BOOL        bInited;
+    BOOL        bChecked;
+    LONGLONG    lastTimeStamp;
+    ID_INFOS(){
+        bInited = FALSE;
+        bChecked = TRUE;
+        lastTimeStamp = 0;
+    }
+};
 
-typedef std::list<PROCESS_ID_TYPE> AllProcessIdContainer;
-typedef AllProcessIdContainer::iterator AllProcessIdContainerIter;
+typedef std::map<THREAD_ID_TYPE, ID_INFOS>      TidContainer;
+typedef TidContainer::iterator        TidContainerIter;
+
+typedef std::map<PROCESS_ID_TYPE, TidContainer>     PidTidContainer;
+typedef PidTidContainer::iterator             PidTidContainerIter;
+
+typedef std::map<MACHINE_NAME_TYPE, PidTidContainer>    MachinePidTidContainer;
+typedef MachinePidTidContainer::iterator          MachinePidTidContainerIter;
 
 
 struct LogItem
@@ -56,11 +79,12 @@ struct LogItem
     LONG                srcFileline;        //在源文件中的行号
     LONGLONG            time;               //FILETIME 对应的值(100ns）
     LONGLONG            elapseTime;
+    MACHINE_NAME_TYPE   machine;            //机器名(一般用于dsh)
     PROCESS_ID_TYPE     processId;
-    THREAD_ID_TYPE		threadId;
+    THREAD_ID_TYPE      threadId;
     FTL::TraceLevel     level;
     //HMODULE           module;
-	LPCWSTR				pszFunName;
+    LPCWSTR             pszFunName;
     LPCWSTR             pszModuleName;
     LPCWSTR             pszTraceInfo;       //保存字符串的指针始终用WCHAR来保存
     LPCTSTR             pszSrcFileName;     //源文件的路径
@@ -75,10 +99,11 @@ struct LogItem
         srcFileline = 0;
         time = 0;
         elapseTime = 0;
+        machine = DEFAULT_LOCAL_MACHINE;
         processId = "0";
         threadId = "0";
         level = FTL::tlEnd;
-		pszFunName = NULL;
+        pszFunName = NULL;
         pszModuleName = NULL;
         pszTraceInfo = NULL;
         pszSrcFileName = NULL;
@@ -86,7 +111,7 @@ struct LogItem
     }
     ~LogItem()
     {
-		SAFE_DELETE_ARRAY(pszFunName);
+        SAFE_DELETE_ARRAY(pszFunName);
         SAFE_DELETE_ARRAY(pszModuleName);
         SAFE_DELETE_ARRAY(pszTraceInfo);
         SAFE_DELETE_ARRAY(pszSrcFileName);

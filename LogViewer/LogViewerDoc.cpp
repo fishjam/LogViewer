@@ -18,9 +18,9 @@ IMPLEMENT_DYNCREATE(CLogViewerDoc, CDocument)
 BEGIN_MESSAGE_MAP(CLogViewerDoc, CDocument)
     ON_COMMAND(ID_FILE_OPEN, &CLogViewerDoc::OnFileOpen)
     ON_COMMAND(ID_FILE_SAVE, &CLogViewerDoc::OnFileSave)
-	ON_COMMAND(ID_FILE_CLOSE, &CLogViewerDoc::OnFileClose)
+    ON_COMMAND(ID_FILE_CLOSE, &CLogViewerDoc::OnFileClose)
     ON_COMMAND(ID_FILE_RELOAD, &CLogViewerDoc::OnFileReload)
-    ON_COMMAND(ID_FILE_GENERATE_LOG, &CLogViewerDoc::OnFileGenerateLog)
+    //ON_COMMAND(ID_FILE_GENERATE_LOG, &CLogViewerDoc::OnFileGenerateLog)
 END_MESSAGE_MAP()
 
 
@@ -115,6 +115,18 @@ void CLogViewerDoc::GetFileFilterString(CString & strFilter)
 	//strFilter.Replace(TEXT('|'), TEXT('\0'));
 }
 
+BOOL CLogViewerDoc::OnOpenDocument(LPCTSTR lpszPathName){
+    BOOL bRet = FALSE;
+    CStringArray allLogFiles;
+    allLogFiles.Add(lpszPathName);
+    API_VERIFY(m_FTLogManager.SetLogFiles(allLogFiles));
+    if (bRet)
+    {
+        SendInitialUpdate();
+    }
+    return bRet;
+}
+
 void CLogViewerDoc::OnFileOpen()
 {
     CString strFilter;
@@ -174,18 +186,18 @@ void CLogViewerDoc::OnFileReload()
 	SendInitialUpdate();
 }
 
-void CLogViewerDoc::OnFileGenerateLog(){
-    //生成 Xx W记录
-    int ret = FormatMessageBox(NULL, TEXT("Confirm"), MB_OKCANCEL, 
-        TEXT("Now will generate 100K record file log, Yes Continue"));
-    if (IDOK == ret)
-    {
-        CFileDialog dlg(FALSE);
-        if(IDOK == dlg.DoModal()){
-            m_FTLogManager.GenerateLog(dlg.GetPathName(), 100000);
-        }
-    }
-}
+// void CLogViewerDoc::OnFileGenerateLog(){
+//     //生成 Xx W记录
+//     int ret = FormatMessageBox(NULL, TEXT("Confirm"), MB_OKCANCEL, 
+//         TEXT("Now will generate 100K record file log, Yes Continue"));
+//     if (IDOK == ret)
+//     {
+//         CFileDialog dlg(FALSE);
+//         if(IDOK == dlg.DoModal()){
+//             m_FTLogManager.GenerateLog(dlg.GetPathName(), 100000);
+//         }
+//     }
+// }
 
 BOOL CLogViewerDoc::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
