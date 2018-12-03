@@ -2,8 +2,8 @@
 
 # LogViewer
   - This is a general log viewer. It can parse the log files by provide  regular expression configuration.
-  - Such as spring-boot, Android, iOS, Visual studio, etc.
-  -  ***Theoretically, this tool can be used to analyze any log format as long as you can write regular expressions for log files***.
+  - Support several log format, such as spring-boot, Android, iOS, Visual studio, etc.
+  -  ***Theoretically, this tool can be used to analyze any log format as long as you write regular expressions for it***.
  
 # Function Point
   - 1.After config the regular expression(REGULAR) in ini configuration files,  and set the result map in REGMAP, then can analyze and display the log files.
@@ -13,10 +13,10 @@
   - 5.Can open Visual Studio and identify the source code by double click the log item,  if there is source filename and line number in logs.
   
 # Log Configuration
-  - 1.Sample file [Standard-SpringBoot.ini](x64/Release/Dsh-SpringBoot.ini) , the log file is [spring log demo](demos/springdemo.zip), can get logs from multi servers by [distributed shell](https://github.com/fishjam/dsh) .
+  - 1.Sample file [Standard-SpringBoot.ini](x64/Release/Dsh-SpringBoot.ini) , the log file is [spring log demo](demos/dsh-springdemo.log), can get logs from multi servers by [distributed shell](https://github.com/fishjam/dsh) .
   - 2.COMMON 
-    - REGULAR :  defines the regular expression for a log. [Regex Match Tracer](http://www.regex-match-tracer.com/) are recommended for writing and validating regular expressions.
-    - TIME_FORMAT : define the date and time format, now only support 4 format. 
+    - REGULAR :  defines the regular expression for a log. [Regex Match Tracer](http://www.regex-match-tracer.com/) is recommended for writing and validating regular expressions.
+    - TIME_FORMAT : define the date and time format, now only support 4 format(ref sample). 
   - 3.REGMAP : define the regular result and log part's correspondence. 
   - 4.LEVELMAP: define the log level's correspondence. 
 
