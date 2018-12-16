@@ -522,7 +522,7 @@ void CLogItemView::OnDetailsHighLightSameThread()
         LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
         if (pLogItem)
         {
-            _HighlightSameThread(pLogItem->threadId);
+            _HighlightSameThread(pLogItem);
         }
     }
 }
@@ -615,7 +615,7 @@ void CLogItemView::OnDetailsCopyFullLog()
     }
 }
 
-void CLogItemView::_HighlightSameThread(THREAD_ID_TYPE threadId)
+void CLogItemView::_HighlightSameThread(LogItemPointer pCompareLogItem)
 {
     CLogManager& logManager = GetDocument()->m_FTLogManager;
     CListCtrl& ListCtrl = GetListCtrl();
@@ -625,10 +625,13 @@ void CLogItemView::_HighlightSameThread(THREAD_ID_TYPE threadId)
     {
         LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
         FTLASSERT(pLogItem);
-        if (pLogItem && pLogItem->threadId == threadId)
-        {
-            ListCtrl.SetItemState(nItem,  LVIS_SELECTED, LVIS_SELECTED);
-            ListCtrl.SetSelectionMark(nItem);
+        if (pLogItem) {
+            if (pLogItem->machine == pCompareLogItem->machine
+                && pLogItem->processId == pCompareLogItem->processId
+                && pLogItem->threadId == pCompareLogItem->threadId){
+                ListCtrl.SetItemState(nItem, LVIS_SELECTED, LVIS_SELECTED);
+                ListCtrl.SetSelectionMark(nItem);
+            }
         }
     }
 }

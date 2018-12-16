@@ -619,12 +619,12 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
                     m_logConfig.m_dateTimeType = dttDateTime;
-                    sscanf_s(strTime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d%",
+                    sscanf_s(strTime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))){
                     m_logConfig.m_dateTimeType = dttTime;
-                    sscanf_s(strTime.c_str(), "%2d:%2d:%2d%",
+                    sscanf_s(strTime.c_str(), "%2d:%2d:%2d",
                         &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
