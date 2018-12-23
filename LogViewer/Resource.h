@@ -34,8 +34,9 @@
 #define ID_CODE_PAGE_KOREAN             32793
 #define ID_FILE_RELOAD                  32794
 #define ID_INDICATOR_FILE_COUNT         59142
-#define ID_INDICATOR_THREAD_COUNT       59143
-#define ID_INDICATOR_LOGITEM_COUNT      59144
+#define ID_INDICATOR_PROCESS_COUNT      59143
+#define ID_INDICATOR_THREAD_COUNT       59144
+#define ID_INDICATOR_LOGITEM_COUNT      59145
 
 // Next default values for new objects
 // 

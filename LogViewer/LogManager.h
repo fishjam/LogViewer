@@ -49,7 +49,7 @@ public:
     LONG GetLogFileCount() const;
     //LONG GetProcessCount() const;
     //LONG GetThreadCount() const;
-    LONG GetSelectedThreadCount() const;
+    VOID GetSelectedCount(LONG& nSelectedProcess, LONG& nSelectedThread);
 
     //! bAll 为 TRUE 表示保存所有的日志
     //! bAll 为 FALSE 表示保存显示的日志(按照显示的顺序进行保存)
@@ -110,6 +110,8 @@ protected:
     FilterType                  m_filterType;
     //BOOL                      m_isIncludeText;
     LONG                        m_fileCount;
+    LONG                        m_nSelectedProcessCount;
+    LONG                        m_nSelectedThreadCount;
     LONG                        m_activeItemIndex;
     //增加了按照多个条件进行排序 -- 在有多个线程且对线程ID排序时，不这样做，各个日志可能乱序
     //是否应该在UI上增加标示？

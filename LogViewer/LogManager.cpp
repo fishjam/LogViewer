@@ -165,6 +165,8 @@ CLogManager::CLogManager(void)
     }
     m_codePage = CP_UTF8;
     m_fileCount = 0;
+    m_nSelectedProcessCount = -1;
+    m_nSelectedThreadCount = -1;
     m_filterType = ftAll;
     m_activeItemIndex = -1;
 }
@@ -242,32 +244,55 @@ LONG CLogManager::GetLogFileCount() const
     return m_fileCount;
 }
 
-LONG CLogManager::GetSelectedThreadCount() const
+VOID CLogManager::GetSelectedCount(LONG& nSelectedProcess, LONG& nSelectedThread)
 {
-    LONG lCount = 0;
+    if (m_allMachinePidTidInfos.empty())
     {
-        CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-        for (MachinePidTidContainer::const_iterator iterMachine = m_allMachinePidTidInfos.begin();
-            iterMachine != m_allMachinePidTidInfos.end();
-            ++iterMachine)
+        nSelectedProcess = 0;
+        nSelectedThread = 0;
+        return;
+    }
+
+    if (m_nSelectedProcessCount != -1
+        && m_nSelectedThreadCount != -1)
+    {
+        nSelectedProcess = m_nSelectedProcessCount;
+        nSelectedThread = m_nSelectedThreadCount;
+    } else {
+        nSelectedProcess = 0;
+        nSelectedThread = 0;
         {
-            const PidTidContainer& pidTidContainer = iterMachine->second;
-            for (PidTidContainer::const_iterator iterPid = pidTidContainer.begin();
-                iterPid != pidTidContainer.end();
-                ++iterPid)
+            CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+            for (MachinePidTidContainer::const_iterator iterMachine = m_allMachinePidTidInfos.begin();
+                iterMachine != m_allMachinePidTidInfos.end();
+                ++iterMachine)
             {
-                const TidContainer& tidContainer = iterPid->second;
-                for (TidContainer::const_iterator iterTid = tidContainer.begin();
-                    iterTid != tidContainer.end();
-                    ++iterTid){
-                        if(iterTid->second.bChecked){
-                            lCount++;
-                        }
+                const PidTidContainer& pidTidContainer = iterMachine->second;
+                for (PidTidContainer::const_iterator iterPid = pidTidContainer.begin();
+                    iterPid != pidTidContainer.end();
+                    ++iterPid)
+                {
+                    BOOL isProcessSelected = FALSE;
+                    const TidContainer& tidContainer = iterPid->second;
+                    for (TidContainer::const_iterator iterTid = tidContainer.begin();
+                        iterTid != tidContainer.end();
+                        ++iterTid){
+                            if(iterTid->second.bChecked){
+                                nSelectedThread++;
+                                if (FALSE == isProcessSelected)
+                                {
+                                    isProcessSelected = TRUE;
+                                    nSelectedProcess++;
+                                }
+                            }
+                    }
                 }
             }
         }
+        
+        m_nSelectedProcessCount = nSelectedProcess;
+        m_nSelectedThreadCount = nSelectedThread;
     }
-    return lCount;
 }
 
 LONG CLogManager::GetDisplayLogItemCount() const
@@ -327,6 +352,8 @@ BOOL CLogManager::DoFilterLogItems()
         SortDisplayItem(m_SortContents[0].contentType,m_SortContents[0].bSortAscending);
     }
     _CalcThreadElpaseTime(m_DisplayLogItems);
+    m_nSelectedProcessCount = -1;
+    m_nSelectedThreadCount = -1;
     return TRUE;
 }
 

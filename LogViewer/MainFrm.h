@@ -56,6 +56,7 @@ protected:
     virtual BOOL OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext);
 public:
     afx_msg void OnUpdateIndicatorFileCount(CCmdUI *pCmdUI);
+    afx_msg void OnUpdateIndicatorProcessCount(CCmdUI* pCmdUI);
     afx_msg void OnUpdateIndicatorThreadCount(CCmdUI* pCmdUI);
     afx_msg void OnUpdateIndicatorLogItemCount(CCmdUI *pCmdUI);
     afx_msg void OnDropFiles(HDROP hDropInfo);

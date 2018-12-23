@@ -123,6 +123,7 @@ BOOL CLogViewerDoc::OnOpenDocument(LPCTSTR lpszPathName){
     if (bRet)
     {
         SendInitialUpdate();
+        UpdateAllViews(NULL);
     }
     return bRet;
 }
@@ -154,6 +155,7 @@ void CLogViewerDoc::OnFileOpen()
         }
         m_FTLogManager.SetLogFiles(allLogFiles);
         SendInitialUpdate();
+        UpdateAllViews(NULL);
     }
     delete [] pFilePathBuf;
 }

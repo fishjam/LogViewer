@@ -64,9 +64,9 @@ void CMachinePidTidTreeView::OnInitialUpdate()
     CTreeCtrl& treeCtrl = GetTreeCtrl();
     if (FALSE == m_bInited)
     {
-        treeCtrl.ModifyStyle(0, TVS_HASBUTTONS|TVS_HASLINES|TVS_LINESATROOT
+        API_VERIFY(treeCtrl.ModifyStyle(0, TVS_HASBUTTONS|TVS_HASLINES|TVS_LINESATROOT
             |TVS_DISABLEDRAGDROP|TVS_CHECKBOXES|TVS_SHOWSELALWAYS|TVS_TRACKSELECT
-            |TVS_EX_PARTIALCHECKBOXES);
+            |TVS_EX_PARTIALCHECKBOXES));
         //treeCtrl.SetExtendedStyle(treeCtrl.GetExtendedStyle() | TVS_EX_PARTIALCHECKBOXES);
         m_bInited = TRUE;
     }

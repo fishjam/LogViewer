@@ -22,6 +22,7 @@ IMPLEMENT_DYNCREATE(CMainFrame, CFrameWnd)
 BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_WM_CREATE()
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_FILE_COUNT, &CMainFrame::OnUpdateIndicatorFileCount)
+    ON_UPDATE_COMMAND_UI(ID_INDICATOR_PROCESS_COUNT, &CMainFrame::OnUpdateIndicatorProcessCount)
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_THREAD_COUNT, &CMainFrame::OnUpdateIndicatorThreadCount)
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_LOGITEM_COUNT, &CMainFrame::OnUpdateIndicatorLogItemCount)
     ON_WM_DROPFILES()
@@ -34,11 +35,12 @@ static UINT indicators[] =
 {
     ID_SEPARATOR,           // status line indicator
     ID_INDICATOR_FILE_COUNT,
+    ID_INDICATOR_PROCESS_COUNT,
     ID_INDICATOR_THREAD_COUNT,
     ID_INDICATOR_LOGITEM_COUNT,
-    ID_INDICATOR_CAPS,
-    ID_INDICATOR_NUM,
-    ID_INDICATOR_SCRL,
+    //ID_INDICATOR_CAPS,
+    //ID_INDICATOR_NUM,
+    //ID_INDICATOR_SCRL,
 };
 
 
@@ -215,9 +217,21 @@ void CMainFrame::OnUpdateIndicatorFileCount(CCmdUI *pCmdUI)
     pCmdUI->SetText(strFormat);
 }
 
+void CMainFrame::OnUpdateIndicatorProcessCount(CCmdUI* pCmdUI)
+{
+    LONG nSelectedProcessCount = 0;
+    LONG nSelectedThreadCount = 0;
+    ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.GetSelectedCount(nSelectedProcessCount, nSelectedThreadCount);
+    CString strFormat;
+    strFormat.Format(ID_INDICATOR_PROCESS_COUNT,nSelectedProcessCount);
+    pCmdUI->SetText(strFormat);
+}
+
 void CMainFrame::OnUpdateIndicatorThreadCount(CCmdUI* pCmdUI)
 {
-    LONG nSelectedThreadCount = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.GetSelectedThreadCount();
+    LONG nSelectedProcessCount = 0;
+    LONG nSelectedThreadCount = 0;
+    ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.GetSelectedCount(nSelectedProcessCount, nSelectedThreadCount);
     CString strFormat;
     strFormat.Format(ID_INDICATOR_THREAD_COUNT,nSelectedThreadCount);
     pCmdUI->SetText(strFormat);
@@ -246,6 +260,7 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
         allLogFiles.Add(buf.GetMemory());
         ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.SetLogFiles(allLogFiles);
         ((CLogViewerDoc*)GetActiveDocument())->SendInitialUpdate();
+        ((CLogViewerDoc*)GetActiveDocument())->UpdateAllViews(NULL);
     }
     //CFrameWnd::OnDropFiles(hDropInfo);
 }
