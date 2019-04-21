@@ -67,6 +67,7 @@ public:
     //LONG GetProcessIds(ProcessIdContainer & processIds) const;
     BOOL SortDisplayItem(LogItemContentType SortContentType, BOOL bSortAscending);
 
+    BOOL IsItemMatchSeqNumber(LONG seqNumber);
     //是否选中 -- 进行过滤
     BOOL IsItemIdChecked(const LogItemPointer& pItem);
 
@@ -80,6 +81,7 @@ public:
 
     BOOL DoFilterLogItems();
     void SetCodepage(UINT codepage){ m_codePage = codepage; }
+    BOOL SetFilterSeqNumber(LONG nStartSeqNumber, LONG nEndSeqNumber);
     BOOL SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType);
     CLogViewerConfig    m_logConfig;
 protected:
@@ -110,6 +112,8 @@ protected:
     FilterType                  m_filterType;
     //BOOL                      m_isIncludeText;
     LONG                        m_fileCount;
+    LONG                        m_nStartSeqNumber;
+    LONG                        m_nEndSeqNumber;
     LONG                        m_nSelectedProcessCount;
     LONG                        m_nSelectedThreadCount;
     LONG                        m_activeItemIndex;

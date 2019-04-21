@@ -12,6 +12,8 @@ IMPLEMENT_DYNCREATE(CLogFilterView, CFormView)
 CLogFilterView::CLogFilterView()
 	: CFormView(CLogFilterView::IDD)
 {
+    m_nStartSeqNumber = 0;
+    m_nEndSeqNumber = -1;
     m_lastFilterStringChangeTick = 0;
     m_bFilterStringChanged = FALSE;
     m_UpdateFilterStringTimerID = 0;
@@ -24,18 +26,22 @@ CLogFilterView::~CLogFilterView()
 void CLogFilterView::DoDataExchange(CDataExchange* pDX)
 {
     CFormView::DoDataExchange(pDX);
-	DDX_Text(pDX, IDC_EDIT_FILTER_STRING, m_strFilterString);
-	DDX_Text(pDX, IDC_EDIT_FULL_TRACEINFO, m_strFullTraceInfo);
+    DDX_Text(pDX, IDC_EDIT_START_SEQ_NUMBER, m_nStartSeqNumber);
+    DDX_Text(pDX, IDC_EDIT_END_SEQ_NUMBER, m_nEndSeqNumber);
+    DDX_Text(pDX, IDC_EDIT_FILTER_STRING, m_strFilterString);
+    DDX_Text(pDX, IDC_EDIT_FULL_TRACEINFO, m_strFullTraceInfo);
+
 	DDX_Control(pDX, IDC_COMBO_FILTER, m_comboBoxFilter);
 }
 
 BEGIN_MESSAGE_MAP(CLogFilterView, CFormView)
     ON_WM_SIZE()
     ON_CONTROL_RANGE(BN_CLICKED,IDC_CHECK_DETAIL,IDC_CHECK_ERROR,&CLogFilterView::OnBnClickedCheckTraceLevel)
+    ON_EN_CHANGE(IDC_EDIT_START_SEQ_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
+    ON_EN_CHANGE(IDC_EDIT_END_SEQ_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
     ON_EN_CHANGE(IDC_EDIT_FILTER_STRING, &CLogFilterView::OnEnChangeEditFilter)
-	ON_CBN_SELCHANGE(IDC_COMBO_FILTER, &CLogFilterView::OnComboboxFilterChange)
+    ON_CBN_SELCHANGE(IDC_COMBO_FILTER, &CLogFilterView::OnComboboxFilterChange)
     ON_WM_TIMER()
-    ON_BN_CLICKED(IDC_CHECK_INCLUDE_TEXT, &CLogFilterView::OnBnClickedCheckIncludeText)
 END_MESSAGE_MAP()
 
 
@@ -64,7 +70,6 @@ void CLogFilterView::OnInitialUpdate()
     {
         CheckDlgButton(nId,BST_CHECKED);
     }
-    CheckDlgButton(IDC_CHECK_INCLUDE_TEXT, BST_CHECKED);
 	m_comboBoxFilter.SetCurSel(ftAll);
     this->InitAutoSizeInfo();
 }
@@ -155,8 +160,9 @@ void CLogFilterView::OnTimer(UINT_PTR nIDEvent)
 
             API_VERIFY(UpdateData(TRUE));
             CLogViewerDoc* pDoc = GetDocument();
+            pDoc->m_FTLogManager.SetFilterSeqNumber(m_nStartSeqNumber, m_nEndSeqNumber);
             pDoc->m_FTLogManager.SetLogInfoFilterString(m_strFilterString,
-				(FilterType)m_comboBoxFilter.GetCurSel()); //IsDlgButtonChecked(IDC_CHECK_INCLUDE_TEXT) == BST_CHECKED
+				(FilterType)m_comboBoxFilter.GetCurSel());
             pDoc->UpdateAllViews(this);
         }
     }
@@ -179,8 +185,3 @@ BOOL CLogFilterView::PreTranslateMessage(MSG* pMsg)
     }
 }
 
-void CLogFilterView::OnBnClickedCheckIncludeText()
-{
-    m_bFilterStringChanged = TRUE;
-    m_lastFilterStringChangeTick = GetTickCount();
-}

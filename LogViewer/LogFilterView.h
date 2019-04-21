@@ -50,6 +50,8 @@ public:
     afx_msg void OnEnChangeEditFilter();
 	afx_msg void OnComboboxFilterChange();
 	CComboBox m_comboBoxFilter;
+    LONG    m_nStartSeqNumber;
+    LONG    m_nEndSeqNumber;
     CString m_strFilterString;
 	CString m_strFullTraceInfo;
     afx_msg void OnTimer(UINT_PTR nIDEvent);
@@ -57,7 +59,6 @@ public:
     DWORD   m_lastFilterStringChangeTick;
     UINT_PTR m_UpdateFilterStringTimerID;
     virtual BOOL PreTranslateMessage(MSG* pMsg);
-    afx_msg void OnBnClickedCheckIncludeText();
 };
 
 
