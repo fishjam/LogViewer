@@ -17,9 +17,10 @@
 #define IDC_CHECK_TRACE                 1005
 #define IDC_CHECK_WARN                  1006
 #define IDC_CHECK_ERROR                 1007
-#define IDC_CHECK_INCLUDE_TEXT          1008
 #define IDC_EDIT_FULL_TRACEINFO         1009
 #define IDC_COMBO_FILTER                1010
+#define IDC_EDIT_START_SEQ_NUMBER       1012
+#define IDC_EDIT_END_SEQ_NUMBER         1013
 #define ID_THREAD_SELECTALL             32773
 #define ID_THREAD_UNSELECTALL           32774
 #define ID_TOOLS_HIGHLIGHTSAMETHREAD    32777
@@ -44,7 +45,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32797
-#define _APS_NEXT_CONTROL_VALUE         1011
+#define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           104
 #endif
 #endif

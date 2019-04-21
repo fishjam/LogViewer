@@ -16,7 +16,18 @@ public:
     }
     bool operator()(const LogItemPointer& pItem) const
     {
-        BOOL bChecked = m_LogManager.m_TraceLevelDisplay[pItem->level];
+        BOOL bChecked = TRUE;
+        
+        if (bChecked)
+        {
+            bChecked = m_LogManager.m_TraceLevelDisplay[pItem->level];
+        }
+
+        if (bChecked)
+        {
+            bChecked = m_LogManager.IsItemMatchSeqNumber(pItem->seqNum);
+        }
+        
         if (bChecked)
         {
             bChecked = m_LogManager.IsItemIdChecked(pItem);// .m_AllLogProcessIdsChecked[pItem->processId];
@@ -165,6 +176,11 @@ CLogManager::CLogManager(void)
     }
     m_codePage = CP_UTF8;
     m_fileCount = 0;
+
+    //Default is [0 ~ -1], it means all logs
+    m_nStartSeqNumber = 0;
+    m_nEndSeqNumber = -1;
+
     m_nSelectedProcessCount = -1;
     m_nSelectedThreadCount = -1;
     m_filterType = ftAll;
@@ -305,6 +321,12 @@ LONG CLogManager::GetDisplayLogItemCount() const
     return lCount;
 }
 
+BOOL CLogManager::IsItemMatchSeqNumber(LONG seqNumber){
+    LONG checkEndSeqNumber = m_nEndSeqNumber < 0 ? LONG_MAX : m_nEndSeqNumber;
+    
+    return FTL_INRANGE(m_nStartSeqNumber, seqNumber , checkEndSeqNumber);
+}
+
 BOOL CLogManager::IsItemIdChecked(const LogItemPointer& pItem){
     ID_INFOS& idInfos = m_allMachinePidTidInfos[pItem->machine][pItem->processId][pItem->threadId];
     return idInfos.bChecked;
@@ -319,6 +341,12 @@ BOOL CLogManager::SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay)
         m_TraceLevelDisplay[level] = bDisplay;
         DoFilterLogItems();
     }
+    return TRUE;
+}
+
+BOOL CLogManager::SetFilterSeqNumber(LONG nStartSeqNumber, LONG nEndSeqNumber){
+    m_nStartSeqNumber = nStartSeqNumber;
+    m_nEndSeqNumber = nEndSeqNumber;
     return TRUE;
 }
 
