@@ -13,7 +13,7 @@ CLogFilterView::CLogFilterView()
 	: CFormView(CLogFilterView::IDD)
 {
     m_nStartSeqNumber = 0;
-    m_nEndSeqNumber = -1;
+    m_nEndSeqNumber = INT_MAX;
     m_lastFilterStringChangeTick = 0;
     m_bFilterStringChanged = FALSE;
     m_UpdateFilterStringTimerID = 0;
@@ -162,7 +162,7 @@ void CLogFilterView::OnTimer(UINT_PTR nIDEvent)
             CLogViewerDoc* pDoc = GetDocument();
             pDoc->m_FTLogManager.SetFilterSeqNumber(m_nStartSeqNumber, m_nEndSeqNumber);
             pDoc->m_FTLogManager.SetLogInfoFilterString(m_strFilterString,
-				(FilterType)m_comboBoxFilter.GetCurSel());
+                (FilterType)m_comboBoxFilter.GetCurSel());
             pDoc->UpdateAllViews(this);
         }
     }

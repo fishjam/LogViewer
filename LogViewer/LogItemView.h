@@ -55,9 +55,11 @@ public:
     afx_msg void OnDetailsCopyItemText();
     afx_msg void OnDetailsCopyLineText();
     afx_msg void OnDetailsCopyFullLog();
+    afx_msg void OnDetailDeleteSelectItems();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 
     afx_msg void OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult);
+    afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);
 };
 
 

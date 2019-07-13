@@ -57,6 +57,7 @@ public:
 
     LONG GetDisplayLogItemCount() const;
     const LogItemPointer GetDisplayLogItem(LONG index) const;
+    BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG index);
     CString getActiveItemTraceInfo();
 

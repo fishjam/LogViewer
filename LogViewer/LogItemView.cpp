@@ -63,9 +63,11 @@ BEGIN_MESSAGE_MAP(CLogItemView, CListView)
     ON_COMMAND(ID_DETAILS_COPY_ITEM_TEXT, &CLogItemView::OnDetailsCopyItemText)
     ON_COMMAND(ID_DETAILS_COPY_LINE_TEXT, &CLogItemView::OnDetailsCopyLineText)
     ON_COMMAND(ID_DETAILS_COPY_FULL_LOG, &CLogItemView::OnDetailsCopyFullLog)
+    ON_COMMAND(ID_DETAILS_DELETE_SELECT_ITEMS, &CLogItemView::OnDetailDeleteSelectItems)
     ON_WM_CONTEXTMENU()
     ON_WM_ERASEBKGND()
     ON_NOTIFY_REFLECT(LVN_ITEMCHANGED, &CLogItemView::OnLvnItemchanged)
+    ON_UPDATE_COMMAND_UI(ID_INDICATOR_SELECTED_LOGITEM, &CLogItemView::OnUpdateIndicatorSelectedLogItem)
 END_MESSAGE_MAP()
 
 
@@ -615,6 +617,55 @@ void CLogItemView::OnDetailsCopyFullLog()
     }
 }
 
+void CLogItemView::OnDetailDeleteSelectItems() {
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
+
+    int nSelectedCount = ListCtrl.GetSelectedCount();
+    if (nSelectedCount <= 0)
+    {
+        return;
+    }
+
+    if (nSelectedCount > 1)
+    {
+        if (FTL::FormatMessageBox(m_hWnd, TEXT("Confirm"), MB_OKCANCEL
+            , TEXT("Do you want delete %d log items"), nSelectedCount) != IDOK)
+        {
+            return;
+        }
+    }
+
+    int nSelectItem = -1;
+    std::set<LONG> delItemsSeqNum;
+    std::list<INT> delItemsIndex;
+    POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+    while (pos != NULL)
+    {
+        nSelectItem = ListCtrl.GetNextSelectedItem(pos);
+        LogItemPointer pLogItem = logManager.GetDisplayLogItem(nSelectItem);
+        if (pLogItem)
+        {
+            delItemsSeqNum.insert(pLogItem->seqNum);
+            delItemsIndex.push_back(nSelectItem);
+            //TRACE("will delete seq: %ld\n", pLogItem->seqNum);
+        }
+    }
+    if (!delItemsSeqNum.empty())
+    {
+        logManager.DeleteItems(delItemsSeqNum);
+        
+        //clear select(is there better way?)
+        std::list<INT>::iterator iter = delItemsIndex.begin();
+        for ( iter++;  //skip the first select
+            iter != delItemsIndex.end(); ++iter)
+        {
+            ListCtrl.SetItemState(*iter, 0, LVIS_SELECTED | LVIS_FOCUSED);
+        }
+        GetDocument()->UpdateAllViews(NULL);
+    }
+}
+
 void CLogItemView::_HighlightSameThread(LogItemPointer pCompareLogItem)
 {
     CLogManager& logManager = GetDocument()->m_FTLogManager;
@@ -683,4 +734,28 @@ void CLogItemView::OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult)
         GetDocument()->m_FTLogManager.setActiveItemIndex(pNMLV->iItem);
         GetDocument()->UpdateAllViews(this);
     }
+}
+
+void CLogItemView::OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI)
+{
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
+
+    int nFirstSeqNum = 0;
+    int nSelectedCount = 0;
+    POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+    if (pos != NULL)
+    {
+        int nItem = ListCtrl.GetNextSelectedItem(pos);
+        LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
+        if (pLogItem)
+        {
+            nFirstSeqNum = pLogItem->seqNum;
+        }
+    }
+    nSelectedCount = ListCtrl.GetSelectedCount();
+
+    CString strFormat;
+    strFormat.Format(ID_INDICATOR_SELECTED_LOGITEM, nFirstSeqNum, nSelectedCount);
+    pCmdUI->SetText(strFormat);
 }

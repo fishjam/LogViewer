@@ -197,7 +197,6 @@ BOOL CLogManager::ClearAllLogItems()
     CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
     m_activeItemIndex = -1;
     m_threadExecuteTimes.clear();
-    m_allInitLogItems.clear();
     m_AllLogItems.clear();
     m_allInitLogItems.clear();
     m_DisplayLogItems.clear();
@@ -399,6 +398,30 @@ const LogItemPointer CLogManager::GetDisplayLogItem(LONG index) const
 
 void CLogManager::setActiveItemIndex(LONG index){
     m_activeItemIndex = index;
+}
+
+BOOL CLogManager::DeleteItems(std::set<LONG> delItems) {
+    //std::sort(items.begin(), items.end());
+    BOOL bDeleted = FALSE;
+    for (LogItemArrayType::iterator iter = m_AllLogItems.begin();
+        iter != m_AllLogItems.end(); )
+    {
+        if (delItems.find((*iter)->seqNum) != delItems.end())
+        {
+            iter = m_AllLogItems.erase(iter);
+            bDeleted = TRUE;
+        }
+        else 
+        {
+            ++iter;
+        }
+    }
+
+    if (bDeleted)
+    {
+        DoFilterLogItems();
+    }
+    return bDeleted;
 }
 
 CString CLogManager::getActiveItemTraceInfo(){
