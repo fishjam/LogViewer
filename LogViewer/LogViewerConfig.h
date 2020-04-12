@@ -7,6 +7,8 @@
 
 #define KEY_REGULAR             TEXT("REGULAR")
 #define KEY_TIMEFORMAT          TEXT("TIME_FORMAT")
+#define KEY_DISPLAY_TIMEFORMAT  TEXT("DISPLAY_TIME_FORMAT")
+#define KEY_SOURCE_FILE_EXTS    TEXT("SOURCE_FILES_EXT")
 
 #define KEY_ITEM_TIME           TEXT("ITEM_TIME")
 #define KEY_ITEM_LEVEL          TEXT("ITEM_LEVEL")
@@ -50,7 +52,9 @@ private:
 public:
     CFConfigIniFile m_config;
     CString         m_strLogRegular;
+    CString         m_strSourceFileExts;
     CString         m_strTimeFormat;
+    CString         m_strDisplayTimeFormat;
     DateTimeType    m_dateTimeType;
 
     INT m_nItemTime;

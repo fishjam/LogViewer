@@ -39,7 +39,9 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
     if (m_config.IsIniFileExist())
     {
         m_config.GetString(SECTION_COMMON, KEY_REGULAR, DEFAULT_NULL_VALUE, m_strLogRegular);
+        m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
+        m_config.GetString(SECTION_COMMON, KEY_DISPLAY_TIMEFORMAT, m_strTimeFormat, m_strDisplayTimeFormat);
 
         _LoadItemMaps();
         _LoadLevelMaps();

@@ -11,7 +11,18 @@ CVsIdeHandler::~CVsIdeHandler(void)
 
 BOOL CVsIdeHandler::HadSelectedActiveIDE()
 {
-    return (NULL != m_pActiveIEnvDTE);
+    HRESULT hr = E_FAIL;
+    CComPtr< EnvDTE::Documents > pIDocuments;
+    if (NULL != m_pActiveIEnvDTE)
+    {
+        //Closed
+        COM_VERIFY(m_pActiveIEnvDTE->get_Documents(&pIDocuments));
+        if (SUCCEEDED(hr))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 HRESULT CVsIdeHandler::StartFindStudio()
@@ -61,11 +72,21 @@ HRESULT CVsIdeHandler::FindNextStudio(StudioInfo* pInfo)
             CComPtr<IUnknown> pIUnknown;
             COM_VERIFY(m_pIRunningObjectTable->GetObject( pIMoniker, &pIUnknown ));
             CComPtr< EnvDTE::_DTE > pIEnvDTE;
-            pIUnknown->QueryInterface(__uuidof(pIEnvDTE), (void**)&pIEnvDTE );
+            COM_VERIFY_EXCEPT1(pIUnknown->QueryInterface(__uuidof(pIEnvDTE), (void**)&pIEnvDTE ), E_NOINTERFACE);
             if( pIEnvDTE )
             {
+                CComPtr<EnvDTE::Window> pIEnvWindow;
+                //COM_DETECT_INTERFACE_FROM_LIST(pIEnvDTE);
+                //COM_DETECT_INTERFACE_FROM_REGISTER(pIEnvDTE);
+                COM_VERIFY(pIEnvDTE->get_MainWindow(&pIEnvWindow));
                 pInfo->pStudioIDE = pIUnknown.Detach();
-                pInfo->strDisplayName = strDisplayName;
+                if (pIEnvWindow) {
+                    CComBSTR bstrCaption;
+                    COM_VERIFY(pIEnvWindow->get_Caption(&bstrCaption));
+                    pInfo->strDisplayName = bstrCaption;
+                } else {
+                    pInfo->strDisplayName = strDisplayName;
+                }
                 break;
             }
         }
@@ -121,33 +142,25 @@ HRESULT CVsIdeHandler::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
         FTLASSERT( pIDocument.p );
 
         CComPtr< IDispatch > pIDispatch;
-        hr = pIDocument->get_Selection( &pIDispatch );
+        COM_VERIFY(pIDocument->get_Selection( &pIDispatch ));
         if ( !SUCCEEDED( hr ) )
             return hr;
 
         CComPtr< EnvDTE::TextSelection > pITextSelection;
-        pIDispatch->QueryInterface( &pITextSelection );
+        COM_VERIFY(pIDispatch->QueryInterface( &pITextSelection ));
 
         FTLASSERT( pITextSelection.p );
 
-        hr = pITextSelection->GotoLine( line, TRUE );
+        COM_VERIFY(pITextSelection->GotoLine( line, TRUE ));
         if ( !SUCCEEDED( hr ) )
             return hr;
         CComPtr<EnvDTE::Window> pMainWindow;
-        hr = m_pActiveIEnvDTE->get_MainWindow(&pMainWindow);
+        COM_VERIFY(m_pActiveIEnvDTE->get_MainWindow(&pMainWindow));
         if (SUCCEEDED(hr))
         {
-            pMainWindow->Activate();
+            COM_VERIFY(pMainWindow->Activate());
         }
     }
     return hr;
 }
 
-HRESULT CVsIdeHandler::GoToFunctionLocation(LPCTSTR pszFunName)
-{
-    HRESULT hr = E_FAIL;
-    if (m_pActiveIEnvDTE)
-    {
-    }
-    return hr;
-}

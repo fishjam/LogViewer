@@ -202,6 +202,8 @@ BOOL CLogManager::ClearAllLogItems()
     m_DisplayLogItems.clear();
 
     m_allMachinePidTidInfos.clear();
+    m_filesMap.clear();
+
     return TRUE;
 }
 
@@ -665,6 +667,49 @@ LPCTSTR CLogManager::_CopyItemInfo(LPCTSTR pszSource){
     return pszDest;
 }
 
+FileFindResultHandle CLogManager::OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam)
+{
+    UNREFERENCED_PARAMETER(pParam);
+
+    BOOL isDirectory = ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY);
+    if (!isDirectory)
+    {
+        CString strFileName = findData.cFileName;
+        FileName2FullPathMap::iterator iter = m_filesMap.find(strFileName);
+        SameNameFilePathListPtr spSameNameFilePathList;
+        if (iter == m_filesMap.end())
+        {
+            //can not find
+            spSameNameFilePathList = std::make_shared<SameNameFilePathList>();
+            m_filesMap.insert(FileName2FullPathMap::value_type(strFileName, spSameNameFilePathList));
+        }
+        else {
+            spSameNameFilePathList = iter->second;
+        }
+
+        spSameNameFilePathList->push_back(pszFilePath);
+    }
+
+    return rhContinue;
+}
+
+BOOL CLogManager::ScanSourceFiles(const CString& strFolderPath)
+{
+    BOOL bRet = FALSE;
+    FTL::CFFileFinder fileFinder;
+    fileFinder.SetCallback(this, this);
+    API_VERIFY(fileFinder.Find(strFolderPath, m_logConfig.m_strSourceFileExts, TRUE));
+    return bRet;
+}
+
+SameNameFilePathListPtr CLogManager::FindFileFullPath(CString strFileName) {
+    FileName2FullPathMap::iterator iter = m_filesMap.find(strFileName);
+    if (iter != m_filesMap.end())  //find
+    {
+        return iter->second;
+    }
+    return nullptr;
+}
 
 LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem)
 {
@@ -672,7 +717,10 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
     bool result = std::tr1::regex_match(strOneLog, regularResults, reg);
     LogItemPointer pItem(new LogItem);
 
+#if ENABLE_COPY_FULL_LOG
     _ConvertItemInfo(strOneLog, pItem->pszFullLog, m_codePage);
+#endif
+
     pItem->level = FTL::tlTrace;
     if (result) //success
     {
@@ -714,6 +762,15 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 else{
                     FTLASSERT(FALSE);
                 }
+
+                if (m_logConfig.m_strDisplayTimeFormat.Find(TEXT("yyyy-MM-dd")) >= 0)
+                {
+                    m_logConfig.m_dateTimeType = dttDateTime;
+                }
+                else {
+                    m_logConfig.m_dateTimeType = dttTime;
+                }
+
                 FILETIME localFileTime = {0};
                 SystemTimeToFileTime(&st,&localFileTime);
                 pItem->time = *((LONGLONG*)&localFileTime);// ((((st.wHour * 60) + st.wMinute) * 60) + st.wSecond)* 1000 + microSecond;

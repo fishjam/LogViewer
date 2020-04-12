@@ -38,7 +38,6 @@ public:
 public:
     CLogManager   m_FTLogManager;
     BOOL GoToLineInSourceCode(LPCTSTR pszFileName,int line);
-    BOOL GoToFunctionLocation(LPCTSTR pszFunName);
     void GetFileFilterString(CString & strFilter);
 protected:
     CVsIdeHandler   m_VSIdeHandler;
@@ -53,6 +52,8 @@ public:
     afx_msg void OnFileReload();
     //afx_msg void OnFileGenerateLog();
     
+private:
+    BOOL _SelectActiveIde();
 };
 
 

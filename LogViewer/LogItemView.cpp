@@ -45,7 +45,7 @@ CLogItemView::CLogItemView()
     m_bInited = FALSE;
     m_SortContentType = type_Sequence;
     m_bSortAscending = TRUE;
-    m_dwDefaultStyle |= ( LVS_REPORT | LVS_OWNERDATA );
+    m_dwDefaultStyle |= ( LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA );
     m_ptContextMenuClick.SetPoint(-1, -1);
 }
 
@@ -442,7 +442,8 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
     {
         CString strFileName;
         int line = 0;
-        LogItemPointer pLogItem = GetDocument()->m_FTLogManager.GetDisplayLogItem(pNMListView->iItem);
+        CLogManager& rLogManager = GetDocument()->m_FTLogManager;
+        LogItemPointer pLogItem = rLogManager.GetDisplayLogItem(pNMListView->iItem);
 
         if (pLogItem->pszSrcFileName != NULL && pLogItem->srcFileline != 0)
         {
@@ -475,24 +476,38 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
             TCHAR szPathFull[MAX_PATH] = {0};
             if (PathIsRelative(strFileName))
             {
-                if (m_strFolderPath.IsEmpty())
+                if (rLogManager.NeedScanSourceFiles())
                 {
-                    CFDirBrowser dirBrowser(TEXT("Choose Project Source Path(relative to the source file)"), m_hWnd);
+                    CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd);
                     if (dirBrowser.DoModal())
                     {
-                        m_strFolderPath = dirBrowser.GetSelectPath();
+                        CString strFolderPath = dirBrowser.GetSelectPath();
+                        rLogManager.ScanSourceFiles(strFolderPath);
                     }
                 }
-                PathCombine(szPathFull, m_strFolderPath, strFileName);
-                //PathCombine(szPathFull, _T("E:\\Code\\EPubViewer\\HostApp\\Release\\.."), strFileName);
+
+                SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(strFileName);
+                if (spFilePathList != nullptr)
+                {
+                    int nSameFileNameCount = spFilePathList->size();
+                    if (nSameFileNameCount > 1)
+                    {
+                        FTLTRACEEX(FTL::tlWarn, TEXT("find %d source files with %s"), nSameFileNameCount, strFileName);
+                    }
+                    //TODO: if there are more than one file with same name, then prompt user choose
+                    StringCchCopy(szPathFull, _countof(szPathFull), spFilePathList->front());
+                }
             }
             else
             {
                 StringCchCopy(szPathFull, _countof(szPathFull), strFileName);
             }
             CString path(szPathFull);
-            path.Replace(_T('/'), _T('\\'));
-            GetDocument()->GoToLineInSourceCode(path,line);
+            if (!path.IsEmpty())
+            {
+                path.Replace(_T('/'), _T('\\'));
+                GetDocument()->GoToLineInSourceCode(path, line);
+            }
         }
      }
     *pResult = 0;
@@ -505,10 +520,15 @@ void CLogItemView::OnContextMenu(CWnd* pWnd, CPoint point)
         CMenu menuDetails;
         BOOL bRet = FALSE;
         API_VERIFY(menuDetails.LoadMenu(IDR_MENU_DETAIL));
-        CMenu* pThreadMenu = menuDetails.GetSubMenu(0);
-        FTLASSERT(pThreadMenu);
+        CMenu* pDetailMenu = menuDetails.GetSubMenu(0);
+        FTLASSERT(pDetailMenu);
         m_ptContextMenuClick = point;
-        API_VERIFY(pThreadMenu->TrackPopupMenu(TPM_TOPALIGN|TPM_LEFTBUTTON,point.x,point.y,pWnd));
+#if ENABLE_COPY_FULL_LOG
+        pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_ENABLED | MF_BYCOMMAND);
+#else 
+        pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_DISABLED | MF_GRAYED | MF_BYCOMMAND);
+#endif
+        API_VERIFY(pDetailMenu->TrackPopupMenu(TPM_TOPALIGN|TPM_LEFTBUTTON,point.x,point.y,pWnd));
     }
 }
 
@@ -596,6 +616,7 @@ void CLogItemView::OnDetailsCopyLineText()
 
 void CLogItemView::OnDetailsCopyFullLog()
 {
+#if ENABLE_COPY_FULL_LOG
     BOOL bRet = FALSE;
     CString strText;
 
@@ -615,6 +636,7 @@ void CLogItemView::OnDetailsCopyFullLog()
             TEXT("pos=[%d,%d], text=%s, Last Error=%d"), 
             lvHistTestInfo.iItem, lvHistTestInfo.iSubItem, strText, GetLastError());
     }
+#endif
 }
 
 void CLogItemView::OnDetailDeleteSelectItems() {
@@ -662,7 +684,7 @@ void CLogItemView::OnDetailDeleteSelectItems() {
         {
             ListCtrl.SetItemState(*iter, 0, LVIS_SELECTED | LVIS_FOCUSED);
         }
-        GetDocument()->UpdateAllViews(NULL);
+        Invalidate();
     }
 }
 

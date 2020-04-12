@@ -21,6 +21,7 @@
 #elif _MSC_VER == 1900      //VS2015
 #  import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("13.0") lcid("0") raw_interfaces_only named_guids
 #endif
+
 #pragma warning( default : 4146 )
 #pragma warning( default : 4278 )
 
@@ -38,7 +39,6 @@ public:
     HRESULT FindNextStudio(StudioInfo* pInfo);
     HRESULT CloseFind();
     HRESULT GoToLineInSourceCode(LPCTSTR pszFileName,int line);
-    HRESULT GoToFunctionLocation(LPCTSTR pszFunName);
     HRESULT SetActiveIDE(IUnknown* pUnknown);
     BOOL    HadSelectedActiveIDE();
 protected:

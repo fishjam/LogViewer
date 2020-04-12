@@ -3,6 +3,7 @@
 //#ifndef UNICODE
 //#  error 目前只支持Unicode编译
 //#endif
+#include <memory>
 
 #include "..\LogViewerDefine.h"
 #include "LogViewerConfig.h"
@@ -36,9 +37,17 @@ struct SortContent
 };
 
 struct LogItemFilter;
-class CLogManager
+
+typedef std::list<CString>         SameNameFilePathList;
+typedef std::shared_ptr<SameNameFilePathList>   SameNameFilePathListPtr;
+typedef std::map<CString, SameNameFilePathListPtr, CAtlStringCompareI> FileName2FullPathMap;
+
+class CLogManager: public IFileFindCallback
 {
     friend struct LogItemFilter;
+public:
+    //IFileFindCallback
+    virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam);
 public:
     CLogManager(void);
     ~CLogManager(void);
@@ -85,11 +94,19 @@ public:
     BOOL SetFilterSeqNumber(LONG nStartSeqNumber, LONG nEndSeqNumber);
     BOOL SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType);
     CLogViewerConfig    m_logConfig;
+
+    BOOL NeedScanSourceFiles() {
+        return m_filesMap.empty();
+    }
+    BOOL ScanSourceFiles(const CString& strFolderPath);
+    SameNameFilePathListPtr FindFileFullPath(CString strFileName);
 protected:
     typedef std::vector<LogItemPointer>     LogItemArrayType;
     typedef LogItemArrayType::iterator      LogItemArrayIterator;
     typedef std::list<LogItemPointer>       LogItemListType;
     //typedef std::back_insert_iterator< LogItemArrayType > back_ins_itr;
+    
+    FileName2FullPathMap        m_filesMap;
 
     UINT                        m_codePage;
     mutable CFCriticalSection   m_CsLockObj;

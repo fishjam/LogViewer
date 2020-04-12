@@ -203,17 +203,7 @@ void CLogViewerDoc::OnFileReload()
 
 BOOL CLogViewerDoc::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
-    if (FALSE == m_VSIdeHandler.HadSelectedActiveIDE())
-    {
-        CStudioListDlg listDlg(m_VSIdeHandler);
-        if (IDOK == listDlg.DoModal())
-        {
-            if (listDlg.m_SelectedIDE != NULL)
-            {
-                m_VSIdeHandler.SetActiveIDE(listDlg.m_SelectedIDE);
-            }
-        }
-    }
+    _SelectActiveIde();
 
     if (m_VSIdeHandler.HadSelectedActiveIDE())
     {
@@ -222,8 +212,8 @@ BOOL CLogViewerDoc::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
     return TRUE;
 }
 
-BOOL CLogViewerDoc::GoToFunctionLocation(LPCTSTR pszFunName)
-{
+BOOL CLogViewerDoc::_SelectActiveIde() {
+    BOOL bRet = FALSE;
     if (FALSE == m_VSIdeHandler.HadSelectedActiveIDE())
     {
         CStudioListDlg listDlg(m_VSIdeHandler);
@@ -235,11 +225,5 @@ BOOL CLogViewerDoc::GoToFunctionLocation(LPCTSTR pszFunName)
             }
         }
     }
-
-    if (m_VSIdeHandler.HadSelectedActiveIDE())
-    {
-        m_VSIdeHandler.GoToFunctionLocation(pszFunName);
-    }
-    return TRUE;
+    return bRet;
 }
-

@@ -152,7 +152,7 @@ BEGIN
     BEGIN
         MENUITEM "Copy Item Text",              ID_DETAILS_COPY_ITEM_TEXT
         MENUITEM "Copy Line Text",              ID_DETAILS_COPY_LINE_TEXT
-        MENUITEM "Copy Full Log",               ID_DETAILS_COPY_FULL_LOG
+        MENUITEM "Copy Full Log",               ID_DETAILS_COPY_FULL_LOG, GRAYED
         MENUITEM SEPARATOR
         MENUITEM "Highlight Same Thread",       ID_DETAILS_HIGHLIGHT_SAME_THREAD
         MENUITEM "Delete Select Items",         ID_DETAILS_DELETE_SELECT_ITEMS
