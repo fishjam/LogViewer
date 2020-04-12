@@ -6,6 +6,9 @@
 #include <list>
 #include <ftlSharePtr.h>
 
+//if enable this, then can copy full log, but it will use double memory
+#define ENABLE_COPY_FULL_LOG        0
+
 //time 现在的单位是 FILETIME(100ns)
 #define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 

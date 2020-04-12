@@ -340,6 +340,12 @@ namespace FTL
         int len = text.GetLength();
         int start = 0;
         int stop = text.Find(delimiter, start);
+        while ((stop = (text.Find(delimiter, start))) == start)
+        {
+            //ignore init repeat delimiter
+            start = stop + 1;
+        }
+
         while (-1 != stop)
         {
             if (bWithDelimeter && start > 0)
@@ -351,7 +357,12 @@ namespace FTL
                 tokens.push_back(text.Mid(start, stop - start));
             }
             start = stop + 1;
-            stop = text.Find(delimiter, start);
+            while ((stop = (text.Find(delimiter, start))) == start)
+            {
+                //ignore repeat delimiter
+                start = stop + 1;
+            }
+
         }
         if (start >= 0 && start < len)
         {
@@ -446,6 +457,15 @@ namespace FTL
 
 		return TRUE;
 	}
+    
+    //比较数据的绝对值
+    template<typename T>
+    struct abs_comparator {
+        bool operator() (T i, T j) { 
+            return abs(i) < abs(j); 
+        }
+    };
+
     //一个序列数生成器，用于 std::generate, 使用方法见 test_generate
     //  std::generate(intVect.begin(), intVect.end(), sequence_generator<int>(1,1));
     //  

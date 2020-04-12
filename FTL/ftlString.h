@@ -21,18 +21,20 @@ namespace FTL
     {
         FTLINLINE bool operator()(const std::string& lhs, const std::string& rhs) const
         {
-            return ciStringCompare(lhs, rhs);
+            int nRet = ciStringCompare(lhs, rhs);
+            return nRet < 0;
         }
 
     };
 
-	struct CAtlStringCompareI : public std::binary_function<LPCTSTR, LPCTSTR, bool>
-	{
-		FTLINLINE bool operator()(LPCTSTR& lhs, LPCTSTR& rhs) const
-		{
-			return StrCmpI(lhs, rhs);
-		}
-	};
+    struct CAtlStringCompareI : public std::binary_function<LPCTSTR, LPCTSTR, bool>
+    {
+        FTLINLINE bool operator()(const LPCTSTR& lhs, const LPCTSTR& rhs) const
+        {
+            int nRet = StrCmpI(lhs, rhs);
+            return nRet < 0;
+        }
+    };
 
 #if 0
 
