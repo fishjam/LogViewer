@@ -18,6 +18,11 @@
   - 3.REGMAP : 定义了正则解析出的各个分组对应日志的哪个部分, 如 ITEM_LEVEL 对应日志等级部分.
   - 4.LEVELMAP: 定义了日志等级的对应方式, 如 LEVEL_TRACE=INFO 表示日志中的 "INFO" 对应 LogViewer 中的 "Trace" 等级的日志, 可通过其进行过滤.
 
+# 使用 [Regex Match Tracer](http://www.regex-match-tracer.com/) 分析和编辑正则配置
+  - 1.参考 [Standard-SpringBoot.ini](x64/Release/Dsh-SpringBoot.ini) 和 [distributed spring log demo](demos/dsh-springdemo.log) 作为示例
+  - 2.详细配置参见: F3 快捷键进行匹配
+![Regex Match Tracer Demo](doc/RegexMatchTracer.png)
+
 # TODO
  - [ ] Support pipe source, so can support real-time log(tail -f xxx | adb logcat | idevicelogsys | etc.)
   
