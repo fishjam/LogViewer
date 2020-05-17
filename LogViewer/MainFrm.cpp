@@ -12,9 +12,6 @@
 #define new DEBUG_NEW
 #endif
 
-#define SECTION_CONFIG      TEXT("Config")
-#define ENTRY_ACTIVE_INI    TEXT("ActiveIni")
-
 // CMainFrame
 
 IMPLEMENT_DYNCREATE(CMainFrame, CFrameWnd)

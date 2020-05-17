@@ -81,13 +81,9 @@ public:
     //是否选中 -- 进行过滤
     BOOL IsItemIdChecked(const LogItemPointer& pItem);
 
-    BOOL SetProcessIdChecked(PROCESS_ID_TYPE processId, BOOL bChecked);
-    BOOL IsProcessIdChecked(PROCESS_ID_TYPE processId) const;
+    void OnlySelectSpecialItems(const MachinePIdTIdType& selectIdType, ONLY_SELECT_TYPE selType);
 
-    BOOL SetThreadIdChecked(THREAD_ID_TYPE threadId, BOOL bChecked);
-    BOOL IsThreadIdChecked(THREAD_ID_TYPE threadId) const;
     BOOL SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay);
-    
 
     BOOL DoFilterLogItems();
     void SetCodepage(UINT codepage){ m_codePage = codepage; }

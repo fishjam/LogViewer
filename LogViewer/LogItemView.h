@@ -56,10 +56,14 @@ public:
     afx_msg void OnDetailsCopyLineText();
     afx_msg void OnDetailsCopyFullLog();
     afx_msg void OnDetailDeleteSelectItems();
+    afx_msg void OnDetailSelectCurrentPid();
+    afx_msg void OnDetailSelectCurrentTid();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 
     afx_msg void OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);
+private:
+    int _GetSelectedIdTypeValue(MachinePIdTIdType& idType);
 };
 
 

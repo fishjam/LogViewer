@@ -14,11 +14,25 @@
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
 #define DEFAULT_LOCAL_MACHINE       "local"
 
+//在 filter item 列表中通过右键选择只显示指定 pid/tid 的日志 => 更新 machinePidTid 视图. TODO: 是否有更好的方式?
+#define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID      1001
+#define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID      1002
+
+enum ONLY_SELECT_TYPE{
+    ostMachine,
+    ostProcessId,
+    ostThreadId,
+};
+
 typedef std::string MACHINE_NAME_TYPE;
 typedef std::string THREAD_ID_TYPE;
 typedef std::string PROCESS_ID_TYPE;
 
 struct MachinePIdTIdType{
+    MachinePIdTIdType() {
+        //all default value is "";
+    }
+
     MachinePIdTIdType(MACHINE_NAME_TYPE machine, PROCESS_ID_TYPE pid, THREAD_ID_TYPE tid){
         this->machine = machine;
         this->pid = pid;

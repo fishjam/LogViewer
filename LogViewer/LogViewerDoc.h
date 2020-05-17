@@ -7,7 +7,12 @@
 #include "LogManager.h"
 #include "VsIdeHandler.h"
 //class CLogFilterManager;
+#include <ftlSystem.h>
 #include "../LogFilterBase.h"
+
+#define SECTION_CONFIG      TEXT("Config")
+#define ENTRY_ACTIVE_INI    TEXT("ActiveIni")
+#define ENTRY_SOURCE_DIR    TEXT("SourceDir")
 
 class CLogViewerDoc : public CDocument
 {

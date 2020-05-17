@@ -156,6 +156,9 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Highlight Same Thread",       ID_DETAILS_HIGHLIGHT_SAME_THREAD
         MENUITEM "Delete Select Items",         ID_DETAILS_DELETE_SELECT_ITEMS
+        MENUITEM SEPARATOR
+        MENUITEM "Select Current PID",          ID_DETAILS_SELECT_CURRENT_PID
+        MENUITEM "Select Current TID",          ID_DETAILS_SELECT_CURRENT_TID
     END
 END
 

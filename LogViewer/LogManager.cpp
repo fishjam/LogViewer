@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "LogManager.h"
 #include "LogViewer.h"
+#include <ftlFunctional.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -333,6 +334,47 @@ BOOL CLogManager::IsItemIdChecked(const LogItemPointer& pItem){
     return idInfos.bChecked;
 }
 
+void CLogManager::OnlySelectSpecialItems(const MachinePIdTIdType& selectIdType, ONLY_SELECT_TYPE selType) {
+    CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+
+    for (MachinePidTidContainer::iterator iterMachine = m_allMachinePidTidInfos.begin();
+        iterMachine != m_allMachinePidTidInfos.end();
+        ++iterMachine)
+    {
+        MACHINE_NAME_TYPE curMachine = iterMachine->first;
+        BOOL isSameMachine = (curMachine == selectIdType.machine);
+        PidTidContainer& pidTidContainer = iterMachine->second;
+
+        for (PidTidContainer::iterator iterPid = pidTidContainer.begin();
+            iterPid != pidTidContainer.end();
+            ++iterPid)
+        {
+            PROCESS_ID_TYPE curProcess = iterPid->first;
+            BOOL isSameProcess = (curProcess == selectIdType.pid);
+            TidContainer& tidContainer = iterPid->second;
+
+            for (TidContainer::iterator iterTid = tidContainer.begin();
+                iterTid != tidContainer.end();
+                ++iterTid) {
+                THREAD_ID_TYPE curThread = iterTid->first;
+                BOOL isSameThread = (curThread == selectIdType.tid);
+                ID_INFOS& rIdInfos = iterTid->second;
+
+                if (ostMachine == selType) {
+                    rIdInfos.bChecked = isSameMachine;
+                }
+                else if (ostProcessId == selType) {
+                    rIdInfos.bChecked = isSameMachine && isSameProcess;
+                }
+                else if (ostThreadId == selType) {
+                    rIdInfos.bChecked = isSameMachine && isSameProcess && isSameThread;
+                }
+            }
+        }
+    }
+
+    DoFilterLogItems();
+}
 
 BOOL CLogManager::SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay)
 {

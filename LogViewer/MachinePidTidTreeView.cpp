@@ -13,6 +13,7 @@ IMPLEMENT_DYNCREATE(CMachinePidTidTreeView, CTreeView)
 CMachinePidTidTreeView::CMachinePidTidTreeView()
 {
     m_bInited = FALSE;
+    m_filterHint = 0;
 }
 
 CMachinePidTidTreeView::~CMachinePidTidTreeView()
@@ -20,6 +21,7 @@ CMachinePidTidTreeView::~CMachinePidTidTreeView()
 }
 
 BEGIN_MESSAGE_MAP(CMachinePidTidTreeView, CTreeView)
+    ON_WM_CREATE()
     ON_NOTIFY_REFLECT(NM_TVSTATEIMAGECHANGING, &CMachinePidTidTreeView::OnNMTVStateImageChanging)
 END_MESSAGE_MAP()
 
@@ -54,6 +56,13 @@ BOOL CMachinePidTidTreeView::PreTranslateMessage(MSG* pMsg){
 
 }
 
+int CMachinePidTidTreeView::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+    if (CTreeView::OnCreate(lpCreateStruct) == -1)
+        return -1;
+
+    return 0;
+}
 // CMachinePidTidTreeView message handlers
 
 void CMachinePidTidTreeView::OnInitialUpdate()
@@ -77,6 +86,33 @@ void CMachinePidTidTreeView::OnInitialUpdate()
     //pDoc->m_FTLogManager.GetThreadIds(allThreadIds);
 
     // TODO: Add your specialized code here and/or call the base class
+}
+
+void CMachinePidTidTreeView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint) {
+    //TODO: 采用 "/" 连起来的名称列表 的方式, 似乎更好?
+    if (pSender != this)
+    {
+        CFConversion conv;
+        std::string stdstring;
+        MachinePIdTIdType* pFilterIdType = NULL;
+        if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID == lHint)
+        {
+            pFilterIdType = (MachinePIdTIdType*)pHint;
+            stdstring = "/" + pFilterIdType->machine + "/" + pFilterIdType->pid;
+        }
+        else  if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID == lHint) {
+            pFilterIdType = (MachinePIdTIdType*)pHint;
+            stdstring = "/" + pFilterIdType->machine + "/" + pFilterIdType->pid + "/" + pFilterIdType->tid;
+        }
+        if (NULL == pFilterIdType)
+        {
+            return;
+        }
+
+        m_filterHint = lHint;
+        CString strFilterPath = conv.UTF8_TO_TCHAR(stdstring.c_str());
+        enumTreeCtrl(this, (DWORD_PTR)&strFilterPath);
+    }
 }
 
 void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidContainer& allMachinePidTidInfos){
@@ -120,7 +156,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
 
                     HTREEITEM hItemTid = treeCtrl.InsertItem(&tvInsertStruct);
                     treeCtrl.SetItemData(hItemTid, (DWORD_PTR)&(iterTid->second));
-                    treeCtrl.Expand(hItemPid, TVE_EXPAND);
+                    //treeCtrl.Expand(hItemPid, TVE_EXPAND);
                 }
             }
     }
@@ -146,7 +182,6 @@ void CMachinePidTidTreeView::OnNMTVStateImageChanging(NMHDR *pNMHDR, LRESULT *pR
         if(flag&(TVHT_ONITEMSTATEICON)) {
             SetChildCheck(treeCtrl, hCurrentItem, !treeCtrl.GetCheck(hCurrentItem));
             SetParentCheck(treeCtrl, hCurrentItem, !treeCtrl.GetCheck(hCurrentItem));
-
 
             //pDoc->m_FTLogManager.SetThreadIdChecked(threadId,TRUE);
             CLogViewerDoc* pDoc = GetDocument();
@@ -217,3 +252,69 @@ void CMachinePidTidTreeView::SetParentCheck(CTreeCtrl& treeCtrl, HTREEITEM hItem
     // 递归调用
     SetParentCheck(treeCtrl, hParent, treeCtrl.GetCheck(hParent));
 }
+
+void CMachinePidTidTreeView::enumTreeCtrl(IEnumTreeCtrlItrmCallback* pCallBack, DWORD_PTR param) 
+{
+    CTreeCtrl& treeCtrl = GetTreeCtrl();
+    
+    std::list<HTREEITEM> allItems;
+    std::list<CString>   allItemNames;
+
+    HTREEITEM hItem = treeCtrl.GetRootItem();
+    CString strParentPath = TEXT("/");
+    if (NULL != hItem)
+    {
+        CString strText = treeCtrl.GetItemText(hItem);
+        pCallBack->onHandleItem(treeCtrl, strParentPath + strText, hItem, param);
+        
+        allItems.push_back(hItem);
+        allItemNames.push_back(strParentPath + strText + TEXT("/"));
+    }
+
+    while (!allItems.empty())
+    {
+        hItem = allItems.front();
+        strParentPath = allItemNames.front();
+        allItems.pop_front();
+        allItemNames.pop_front();
+
+        //ID_INFOS* pIdInfos = (ID_INFOS*)treeCtrl.GetItemData(hItem);
+        //treeCtrl.SetCheck(hItem, bCheck);
+        if (treeCtrl.ItemHasChildren(hItem))
+        {
+            //广度遍历
+            HTREEITEM hChildItem = treeCtrl.GetChildItem(hItem);
+            while (hChildItem) {
+                CString strText = treeCtrl.GetItemText(hChildItem);
+                if (treeCtrl.ItemHasChildren(hChildItem)) {
+                    allItems.push_back(hChildItem);
+                    allItemNames.push_back(strParentPath + strText + TEXT("/"));
+                }
+                pCallBack->onHandleItem(treeCtrl, strParentPath + strText, hChildItem, param);
+                hChildItem = treeCtrl.GetNextSiblingItem(hChildItem);
+            }
+        }
+        else {
+            //最底层的 Tid 节点
+            CString strText = treeCtrl.GetItemText(hItem);
+            pCallBack->onHandleItem(treeCtrl, strParentPath + strText, hItem, param);
+        }
+    }
+}
+
+void CMachinePidTidTreeView::onHandleItem(CTreeCtrl& treeCtrl, const CString& strItem, HTREEITEM hItem, DWORD_PTR param) {
+  //FTLTRACE(TEXT("onHandleItem, strItem=%s"), strItem);
+  CString strFilterIdType = *((CString*)param);
+  
+  switch (m_filterHint)
+  {
+  case VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID:
+      treeCtrl.SetCheck(hItem, strItem.Find(strFilterIdType) == 0);
+      break;
+  case VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID:
+      treeCtrl.SetCheck(hItem, strItem.Compare(strFilterIdType) == 0);
+      break;
+  }
+ 
+}
+

@@ -5,6 +5,8 @@
 #include "LogViewer.h"
 #include "LogItemView.h"
 #include "LogManager.h"
+#include "MachinePidTidTreeView.h"
+#include <ftlShell.h>
 
 struct strColumnInfo
 {
@@ -64,6 +66,8 @@ BEGIN_MESSAGE_MAP(CLogItemView, CListView)
     ON_COMMAND(ID_DETAILS_COPY_LINE_TEXT, &CLogItemView::OnDetailsCopyLineText)
     ON_COMMAND(ID_DETAILS_COPY_FULL_LOG, &CLogItemView::OnDetailsCopyFullLog)
     ON_COMMAND(ID_DETAILS_DELETE_SELECT_ITEMS, &CLogItemView::OnDetailDeleteSelectItems)
+    ON_COMMAND(ID_DETAILS_SELECT_CURRENT_PID, &CLogItemView::OnDetailSelectCurrentPid)
+    ON_COMMAND(ID_DETAILS_SELECT_CURRENT_TID, &CLogItemView::OnDetailSelectCurrentTid)
     ON_WM_CONTEXTMENU()
     ON_WM_ERASEBKGND()
     ON_NOTIFY_REFLECT(LVN_ITEMCHANGED, &CLogItemView::OnLvnItemchanged)
@@ -411,12 +415,13 @@ BOOL CLogItemView::OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LRE
 }
 void CLogItemView::OnUpdate(CView* pSender, LPARAM /*lHint*/, CObject* /*pHint*/)
 {
-    if (pSender != this)
+    //if (pSender != this)
     {
         CLogViewerDoc* pDoc = GetDocument();
         LONG lLogItemCount = pDoc->m_FTLogManager.GetDisplayLogItemCount();
         CListCtrl& ListCtrl = GetListCtrl();
         ListCtrl.SetItemCount(lLogItemCount);
+        FTLTRACE(TEXT("CLogItemView::OnUpdate, logItemCount=%ld"), lLogItemCount);
     }
 }
 
@@ -478,10 +483,13 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
             {
                 if (rLogManager.NeedScanSourceFiles())
                 {
-                    CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd);
+                    CString strExistSourceDir = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR);
+
+                    CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
                     if (dirBrowser.DoModal())
                     {
                         CString strFolderPath = dirBrowser.GetSelectPath();
+                        AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR, strFolderPath);
                         rLogManager.ScanSourceFiles(strFolderPath);
                     }
                 }
@@ -706,6 +714,49 @@ void CLogItemView::_HighlightSameThread(LogItemPointer pCompareLogItem)
                 ListCtrl.SetSelectionMark(nItem);
             }
         }
+    }
+}
+
+int CLogItemView::_GetSelectedIdTypeValue(MachinePIdTIdType& idType) {
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+    LVHITTESTINFO lvHistTestInfo = GetCurrentSelectInfo();
+    if (lvHistTestInfo.iItem != -1)
+    {
+        const LogItemPointer pLogItem = logManager.GetDisplayLogItem(lvHistTestInfo.iItem);
+        if (pLogItem) {
+            idType.machine = pLogItem->machine;
+            idType.pid = pLogItem->processId;
+            idType.tid = pLogItem->threadId;
+        }
+    }
+    return lvHistTestInfo.iItem;
+}
+
+void CLogItemView::OnDetailSelectCurrentPid() {
+    int oldSelectIndex = 0;
+    MachinePIdTIdType selectedIdType;
+
+    if(-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
+        CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+        logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostProcessId);
+        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
+        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
+        Invalidate();
+    }
+}
+
+void CLogItemView::OnDetailSelectCurrentTid() {
+    int oldSelectIndex = 0;
+    MachinePIdTIdType selectedIdType;
+    if (-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
+        CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+        logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostThreadId);
+        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
+        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
+        Invalidate();
     }
 }
 
