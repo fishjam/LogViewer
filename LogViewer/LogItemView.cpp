@@ -6,7 +6,9 @@
 #include "LogItemView.h"
 #include "LogManager.h"
 #include "MachinePidTidTreeView.h"
+#include "DialogGoTo.h"
 #include <ftlShell.h>
+#include <regex>
 
 struct strColumnInfo
 {
@@ -49,6 +51,7 @@ CLogItemView::CLogItemView()
     m_bSortAscending = TRUE;
     m_dwDefaultStyle |= ( LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA );
     m_ptContextMenuClick.SetPoint(-1, -1);
+    m_nLastGotToSeqNumber = 0L;
 }
 
 CLogItemView::~CLogItemView()
@@ -56,6 +59,7 @@ CLogItemView::~CLogItemView()
 }
 
 BEGIN_MESSAGE_MAP(CLogItemView, CListView)
+    ON_COMMAND_EX(ID_EDIT_GOTO, &CLogItemView::OnEditGoTo)
     ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
     //ON_NOTIFY_RANGE(LVN_COLUMNCLICK,0,0xffff,OnColumnClick)
     //ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
@@ -437,6 +441,7 @@ void CLogItemView::OnNMClick(NMHDR *pNMHDR, LRESULT *pResult)
 
 void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 {
+    BOOL bRet = FALSE;
     //LPNMHEADER phdr = reinterpret_cast<LPNMHEADER>(pNMHDR);
     NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
 //     CString strFormat;
@@ -469,9 +474,11 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
                     strTraceInfo.SetAt(semPos,TEXT('\0'));
                     if (-1 != leftBraPos && -1 != rightBraPos && rightBraPos > leftBraPos)  
                     {
-                        strFileName = strTraceInfo.Left(leftBraPos);
-                        CString strLine = strTraceInfo.Mid(leftBraPos+1 , rightBraPos - leftBraPos - 1);
+                        CString strLine = strTraceInfo.Mid(leftBraPos + 1, rightBraPos - leftBraPos - 1);
                         line = _ttoi(strLine);
+
+                        strFileName = strTraceInfo.Left(leftBraPos);
+                        rLogManager.TryReparseRealFileName(strFileName);
                     }
                 }
             }
@@ -494,7 +501,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
                     }
                 }
 
-                SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(strFileName);
+                SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(ATLPath::FindFileName(strFileName));
                 if (spFilePathList != nullptr)
                 {
                     int nSameFileNameCount = spFilePathList->size();
@@ -514,7 +521,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
             if (!path.IsEmpty())
             {
                 path.Replace(_T('/'), _T('\\'));
-                GetDocument()->GoToLineInSourceCode(path, line);
+                API_VERIFY(GetDocument()->GoToLineInSourceCode(path, line));
             }
         }
      }
@@ -831,4 +838,75 @@ void CLogItemView::OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI)
     CString strFormat;
     strFormat.Format(ID_INDICATOR_SELECTED_LOGITEM, nFirstSeqNum, nSelectedCount);
     pCmdUI->SetText(strFormat);
+}
+
+BOOL CLogItemView::OnEditGoTo(UINT nID)
+{
+    BOOL bRet = TRUE;
+    CDialogGoTo dlg(m_nLastGotToSeqNumber, this);
+    if (dlg.DoModal())
+    {
+        CLogManager& logManager = GetDocument()->m_FTLogManager;
+        UINT nGotoSeqNumber = dlg.GetGotoSeqNumber();
+        if (nGotoSeqNumber >= 0 && nGotoSeqNumber < logManager.GetTotalLogItemCount())
+        {
+            m_nLastGotToSeqNumber = nGotoSeqNumber;
+
+            CListCtrl& ListCtrl = GetListCtrl();
+
+            POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+            while (pos != NULL)
+            {
+                int oldSelectItem = ListCtrl.GetNextSelectedItem(pos);
+                ListCtrl.SetItemState(oldSelectItem, 0, LVIS_SELECTED);
+            }
+            Invalidate();
+
+            int nClosestItem = 0, nClosestItemSeqNum = 0;
+
+            //选择用户指定的
+            SortContent sortContent = logManager.GetFirstSortContent();
+            if (type_Sequence == sortContent.contentType && sortContent.bSortAscending
+                && logManager.GetTotalLogItemCount() == logManager.GetDisplayLogItemCount()  //no filter
+                )
+            {
+                nClosestItem = nGotoSeqNumber - 1; //listCtrl 中是 0 基址的
+                nClosestItemSeqNum = nGotoSeqNumber;
+            }
+            else {
+                //需要遍历
+                int nTotalCount = ListCtrl.GetItemCount();
+                for (int nItem = 0; nItem < nTotalCount; nItem++)
+                {
+                    LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
+                    FTLASSERT(pLogItem);
+                    if (pLogItem) {
+                        if (pLogItem->seqNum == nGotoSeqNumber) {
+                            //准确找到
+                            nClosestItem = nItem;
+                            nClosestItemSeqNum = nGotoSeqNumber;
+                            break;
+                        }
+
+                        LONG diff1 = FTL_ABS((LONG)nGotoSeqNumber - pLogItem->seqNum);
+                        LONG diff2 = FTL_ABS((LONG)nGotoSeqNumber - nClosestItemSeqNum);
+                        if ( diff1 <= diff2)
+                        {
+                            nClosestItem = nItem;
+                            nClosestItemSeqNum = pLogItem->seqNum;
+                        }
+                    }
+                }
+            }
+
+            FTLTRACE(TEXT("try got %d, real %d, item index=%d"), 
+                nGotoSeqNumber, nClosestItemSeqNum, nClosestItem);
+
+            API_VERIFY(ListCtrl.EnsureVisible(nClosestItem, TRUE));
+            ListCtrl.SetItemState(nClosestItem, LVIS_SELECTED, LVIS_SELECTED);
+            ListCtrl.SetSelectionMark(nClosestItem);
+
+        }
+    }
+    return bRet;
 }

@@ -29,6 +29,7 @@ protected:
     LogItemContentType m_SortContentType;
     BOOL m_bSortAscending;
     CSortHeaderCtrl	m_ctlHeader;
+    UINT m_nLastGotToSeqNumber;
 
     void Sort( LogItemContentType contentType, BOOL bAscending );
     //static int CALLBACK CompareFunction( LPARAM lParam1, LPARAM lParam2, LPARAM lParamData );
@@ -59,6 +60,7 @@ public:
     afx_msg void OnDetailSelectCurrentPid();
     afx_msg void OnDetailSelectCurrentTid();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+    afx_msg BOOL OnEditGoTo(UINT nID);
 
     afx_msg void OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);

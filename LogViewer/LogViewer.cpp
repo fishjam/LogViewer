@@ -80,7 +80,7 @@ BOOL CLogViewerApp::InitInstance()
     // TODO: You should modify this string to be something appropriate
     // such as the name of your company or organization
     SetRegistryKey(_T("fishjam"));
-    LoadStdProfileSettings(4);  // Load standard INI file options (including MRU)
+    LoadStdProfileSettings(8);  // Load standard INI file options (including MRU)
     // Register the application's document templates.  Document templates
     //  serve as the connection between documents, frame windows and views
     CSingleDocTemplate* pDocTemplate;

@@ -211,6 +211,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DialogGoTo.cpp" />
     <ClCompile Include="LogFilterView.cpp" />
     <ClCompile Include="LogItemView.cpp" />
     <ClCompile Include="LogManager.cpp" />
@@ -232,6 +233,7 @@
   <ItemGroup>
     <ClInclude Include="..\LogFilterBase.h" />
     <ClInclude Include="..\LogViewerDefine.h" />
+    <ClInclude Include="DialogGoTo.h" />
     <ClInclude Include="LogFilterView.h" />
     <ClInclude Include="LogItemView.h" />
     <ClInclude Include="LogManager.h" />

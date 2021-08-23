@@ -25,6 +25,9 @@ CLogViewerConfig::CLogViewerConfig(void)
     m_nItemFile = INVLIAD_ITEM_MAP;
     m_nItemLine = INVLIAD_ITEM_MAP;
     m_nItemLog = INVLIAD_ITEM_MAP;
+
+    m_nItemSrcFileEx = INVLIAD_ITEM_MAP;
+
     m_dateTimeType = dttDateTime;
 }
 
@@ -42,6 +45,15 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
         m_config.GetString(SECTION_COMMON, KEY_DISPLAY_TIMEFORMAT, m_strTimeFormat, m_strDisplayTimeFormat);
+
+        m_config.GetString(SECTION_COMMON, KEY_SRC_REGULAR, DEFAULT_NULL_VALUE, m_strSrcRegular);
+
+        CString strSrcFileItem;
+        m_config.GetString(SECTION_COMMON, KEY_ITEM_SRC_FILE, DEFAULT_NULL_VALUE, strSrcFileItem);
+        if (!strSrcFileItem.IsEmpty())
+        {
+            m_nItemSrcFileEx = _ConvertItemMapValue(strSrcFileItem);
+        }
 
         _LoadItemMaps();
         _LoadLevelMaps();

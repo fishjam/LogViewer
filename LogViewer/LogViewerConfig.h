@@ -6,6 +6,9 @@
 
 
 #define KEY_REGULAR             TEXT("REGULAR")
+#define KEY_SRC_REGULAR         TEXT("SRC_REGULAR")
+#define KEY_ITEM_SRC_FILE       TEXT("ITEM_SRC_FILE")
+
 #define KEY_TIMEFORMAT          TEXT("TIME_FORMAT")
 #define KEY_DISPLAY_TIMEFORMAT  TEXT("DISPLAY_TIME_FORMAT")
 #define KEY_SOURCE_FILE_EXTS    TEXT("SOURCE_FILES_EXT")
@@ -52,6 +55,7 @@ private:
 public:
     CFConfigIniFile m_config;
     CString         m_strLogRegular;
+    CString         m_strSrcRegular;  //有可能文件需要正则表达式进行二次解析
     CString         m_strSourceFileExts;
     CString         m_strTimeFormat;
     CString         m_strDisplayTimeFormat;
@@ -67,6 +71,9 @@ public:
     INT m_nItemFile;
     INT m_nItemLine;
     INT m_nItemLog;
+
+    //二次分析时中的源文件路径
+    INT m_nItemSrcFileEx;
 
     std::string m_strLevelsText[FTL::tlEnd];
 };

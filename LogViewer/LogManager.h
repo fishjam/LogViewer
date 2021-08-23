@@ -65,7 +65,11 @@ public:
     BOOL SaveLogItems(LPCTSTR pszFilePath, BOOL bAll = FALSE);
 
     LONG GetDisplayLogItemCount() const;
+    LONG GetTotalLogItemCount() const;
+
     const LogItemPointer GetDisplayLogItem(LONG index) const;
+    BOOL TryReparseRealFileName(CString& strFileName);
+
     BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG index);
     CString getActiveItemTraceInfo();
@@ -76,6 +80,7 @@ public:
     //LONG GetThreadIds(ThreadIdContainer & threadIds) const;
     //LONG GetProcessIds(ProcessIdContainer & processIds) const;
     BOOL SortDisplayItem(LogItemContentType SortContentType, BOOL bSortAscending);
+    SortContent GetFirstSortContent() const;
 
     BOOL IsItemMatchSeqNumber(LONG seqNumber);
     //是否选中 -- 进行过滤

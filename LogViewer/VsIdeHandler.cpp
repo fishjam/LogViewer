@@ -60,14 +60,19 @@ HRESULT CVsIdeHandler::FindNextStudio(StudioInfo* pInfo)
         CComPtr< IBindCtx > pIBindCtx; 
         COM_VERIFY(::CreateBindCtx( NULL, &pIBindCtx )); 
 
-        LPOLESTR pszDisplayName;
+        LPOLESTR pszDisplayName = NULL;
+        CFConversion conv;
         COM_VERIFY(pIMoniker->GetDisplayName( pIBindCtx, NULL, &pszDisplayName ));
-        TRACE( "Moniker %s\n", W2T( pszDisplayName ) );
+        FTLTRACE( "Moniker name: %s", conv.UTF16_TO_TCHAR ( pszDisplayName ) );
+        //COM_DETECT_INTERFACE_FROM_LIST(pIMoniker);
+        //COM_DETECT_INTERFACE_FROM_REGISTER(pIMoniker);
         CString strDisplayName( pszDisplayName );
         ::CoTaskMemFree(pszDisplayName);
         //Find Studio
         if ( strDisplayName.Right( 4 ) == _T(".sln") 
-            || strDisplayName.Find( _T("VisualStudio.DTE") ) >= 0 )
+            || strDisplayName.Find( _T("VisualStudio.DTE") ) >= 0 
+            //|| strDisplayName.Find(_T("Visual Studio") >= 0)
+            )
         {
             CComPtr<IUnknown> pIUnknown;
             COM_VERIFY(m_pIRunningObjectTable->GetObject( pIMoniker, &pIUnknown ));
@@ -119,6 +124,9 @@ HRESULT CVsIdeHandler::SetActiveIDE(IUnknown* pUnknown)
 HRESULT CVsIdeHandler::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
     HRESULT hr = E_FAIL;
+    FTLTRACE(TEXT("now will try to locate source code at %s(%d)\n"),
+        pszFileName, line);
+
     if (m_pActiveIEnvDTE)
     {
         CComPtr< EnvDTE::Documents > pIDocuments;

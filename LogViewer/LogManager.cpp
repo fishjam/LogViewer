@@ -323,6 +323,16 @@ LONG CLogManager::GetDisplayLogItemCount() const
     return lCount;
 }
 
+LONG CLogManager::GetTotalLogItemCount() const 
+{
+    LONG lCount = 0;
+    {
+        CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+        lCount = (LONG)m_AllLogItems.size();
+    }
+    return lCount;
+}
+
 BOOL CLogManager::IsItemMatchSeqNumber(LONG seqNumber){
     LONG checkEndSeqNumber = m_nEndSeqNumber < 0 ? LONG_MAX : m_nEndSeqNumber;
     
@@ -440,6 +450,35 @@ const LogItemPointer CLogManager::GetDisplayLogItem(LONG index) const
     return pLogItem;
 }
 
+BOOL CLogManager::TryReparseRealFileName(CString& strFileName)
+{
+    if (!m_logConfig.m_strSrcRegular.IsEmpty() && m_logConfig.m_nItemSrcFileEx != INVLIAD_ITEM_MAP)
+    {
+        try
+        {
+            CFConversion conv;
+            const std::tr1::wregex regularSrcPattern(m_logConfig.m_strSrcRegular);
+            std::tr1::wcmatch regularResults;
+            bool result = std::tr1::regex_match(strFileName.GetString(), regularResults, regularSrcPattern);
+            if (result && regularResults.size() >= m_logConfig.m_nItemSrcFileEx)
+            {
+                strFileName = std::wstring(regularResults[m_logConfig.m_nItemSrcFileEx]).c_str();
+                return TRUE;
+            }
+        }
+        catch (const std::tr1::regex_error& e)
+        {
+            FTL::CFConversion convText, convError;
+            FTL::FormatMessageBox(NULL, TEXT("Regex for FileSrc Error"), MB_OK,
+                TEXT("Text=%s\nWrong Regex, reason is %s"),
+                strFileName, convError.UTF8_TO_TCHAR(e.what()));
+            return FALSE;
+        }
+    }
+
+    return FALSE;
+}
+
 void CLogManager::setActiveItemIndex(LONG index){
     m_activeItemIndex = index;
 }
@@ -490,6 +529,12 @@ BOOL CLogManager::SortDisplayItem(LogItemContentType SortContentType, BOOL bSort
     m_SortContents[0].bSortAscending = bSortAscending;
     sort(m_DisplayLogItems.begin(),m_DisplayLogItems.end(),LogItemCompare(&m_SortContents[0]));
     return TRUE;
+}
+
+SortContent CLogManager::GetFirstSortContent() const
+{
+    CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+    return m_SortContents[0];
 }
 
 // LONG CLogManager::GenerateLog(LPCTSTR pszFilePath, LONG logCount)
@@ -907,7 +952,7 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                         strOneLog.erase(0, 3);
                     }
                 }
-                if (strOneLog.length() > 0)
+                if (!strOneLog.empty())
                 {
                     //去除最后的 "\r 或 \n", 避免正则表达式解析失败.
                     bool needRemove = false;
@@ -919,7 +964,7 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                         {
                             strOneLog.erase(strOneLog.length() - 1);
                         }
-                    } while (needRemove);
+                    } while (needRemove && !strOneLog.empty());
                 }
                 LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, preLogItem);
                 preLogItem = pLogItem;
@@ -930,11 +975,13 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                 }
                 readCount++; //放到这个地方来，保证即使一行日志读取失败，SeqNum还是和文件的行数对应
             }
-        }catch(const std::tr1::regex_error& /*e*/){
+        }catch(const std::tr1::regex_error& e){
             bRet = FALSE;
-            FTL::CFConversion conv;
-            FTL::FormatMessageBox(NULL, TEXT("Regex Error"), MB_OK, TEXT("Wrong Regex: \"%s\"\nPlease confirm the REGULAR is valid in %s"), 
-                m_logConfig.m_strLogRegular, m_logConfig.m_config.GetFilePathName());
+            FTL::CFConversion convText, convError;
+            FTL::FormatMessageBox(NULL, TEXT("Regex Error"), MB_OK, 
+                TEXT("readCount=%d, Text=%s\nWrong Regex, reason is %s\nPlease confirm the REGULAR is valid in %s"), 
+                readCount, convText.UTF8_TO_TCHAR(strOneLog.c_str()), convError.UTF8_TO_TCHAR(e.what()),
+                m_logConfig.m_config.GetFilePathName());
         }
 
         bRet = TRUE;

@@ -124,7 +124,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
         ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.m_logConfig.LoadConfig(strActiveIni);
     }
     
-    GetMenu()->AppendMenu(MF_POPUP, (UINT)m_menuIni.m_hMenu, TEXT("ConfigIni"));
+    GetMenu()->AppendMenu(MF_POPUP, (UINT_PTR)m_menuIni.m_hMenu, TEXT("ConfigIni"));
 
     return 0;
 }
