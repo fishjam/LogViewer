@@ -20,6 +20,11 @@
   - 3.REGMAP : define the regular result and log part's correspondence. 
   - 4.LEVELMAP: define the log level's correspondence. 
 
+# Use [Regex Match Tracer](http://www.regex-match-tracer.com/) to analyze and edit regular configurations
+  - 1. Refer [Standard-SpringBoot.ini](https://github.com/fishjam/LogViewer/blob/master/x64/Release/Dsh-SpringBoot.ini) and [distributed spring log demo](https://github.com/fishjam/LogViewer/blob/master/demos/dsh-springdemo.log)
+  - 2. F3 to match
+  ![Regex Match Tracer Demo](doc/RegexMatchTracer.png)
+  
 # TODO
  - [ ] Support pipe source, and so it can support real-time log(tail -f xxx | adb logcat | idevicelogsys | etc.)
 
