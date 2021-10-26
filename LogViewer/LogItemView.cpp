@@ -7,6 +7,8 @@
 #include "LogManager.h"
 #include "MachinePidTidTreeView.h"
 #include "DialogGoTo.h"
+#include "DialogSameFilesList.h"
+
 #include <ftlShell.h>
 #include <regex>
 
@@ -59,8 +61,9 @@ CLogItemView::~CLogItemView()
 }
 
 BEGIN_MESSAGE_MAP(CLogItemView, CListView)
-    ON_COMMAND_EX(ID_EDIT_GOTO, &CLogItemView::OnEditGoTo)
-    ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
+	ON_COMMAND_EX(ID_EDIT_GOTO, &CLogItemView::OnEditGoTo)
+	ON_COMMAND_EX(ID_EDIT_CLEAR_CACHE, &CLogItemView::OnEditClearCache)
+	ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
     //ON_NOTIFY_RANGE(LVN_COLUMNCLICK,0,0xffff,OnColumnClick)
     //ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
     ON_NOTIFY_REFLECT(NM_CLICK, &CLogItemView::OnNMClick)
@@ -485,39 +488,62 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
         }
         if (!strFileName.IsEmpty() && line != 0)
         {
-            TCHAR szPathFull[MAX_PATH] = {0};
-            if (PathIsRelative(strFileName))
-            {
-                if (rLogManager.NeedScanSourceFiles())
-                {
-                    CString strExistSourceDir = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR);
+			TCHAR szPathFull[MAX_PATH] = { 0 };
 
-                    CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
-                    if (dirBrowser.DoModal())
-                    {
-                        CString strFolderPath = dirBrowser.GetSelectPath();
-                        AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR, strFolderPath);
-                        rLogManager.ScanSourceFiles(strFolderPath);
-                    }
-                }
+			//优先在缓存里面查找(主要是减少 重复文件时的选择问题), 如果有, 则直接使用, 否则再走后面的逻辑
+			CString strFileLineCache;
+			strFileLineCache.Format(TEXT("%s:%d"), strFileName, line);
+			CString strFullPathFromUserCache = rLogManager.GetFullPathFromUserCache(strFileLineCache);
+			if (!strFullPathFromUserCache.IsEmpty())
+			{
+				StringCchCopy(szPathFull, _countof(szPathFull), strFullPathFromUserCache);
+			}
+			else {
+				if (PathIsRelative(strFileName))
+				{
+					if (rLogManager.NeedScanSourceFiles())
+					{
+						CString strExistSourceDir = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR);
 
-                SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(ATLPath::FindFileName(strFileName));
-                if (spFilePathList != nullptr)
-                {
-                    int nSameFileNameCount = spFilePathList->size();
-                    if (nSameFileNameCount > 1)
-                    {
-                        FTLTRACEEX(FTL::tlWarn, TEXT("find %d source files with %s"), nSameFileNameCount, strFileName);
-                    }
-                    //TODO: if there are more than one file with same name, then prompt user choose
-                    StringCchCopy(szPathFull, _countof(szPathFull), spFilePathList->front());
-                }
-            }
-            else
-            {
-                StringCchCopy(szPathFull, _countof(szPathFull), strFileName);
-            }
+						CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
+						if (dirBrowser.DoModal())
+						{
+							CString strFolderPath = dirBrowser.GetSelectPath();
+							AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR, strFolderPath);
+							rLogManager.ScanSourceFiles(strFolderPath);
+						}
+					}
+
+					SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(ATLPath::FindFileName(strFileName));
+					if (spFilePathList != nullptr)
+					{
+						int nSameFileNameCount = spFilePathList->size();
+						if (nSameFileNameCount > 1)
+						{
+							FTLTRACEEX(FTL::tlWarn, TEXT("find %d source files with %s"), nSameFileNameCount, strFileName);
+							CDialogSameFilesList dlgSameFilesList(spFilePathList);
+							if (IDOK == dlgSameFilesList.DoModal())
+							{
+								StringCchCopy(szPathFull, _countof(szPathFull), dlgSameFilesList.GetSelectFilePath());
+								rLogManager.SetFullPathForUserCache(strFileLineCache, szPathFull);
+							}
+						}
+						if (szPathFull[0] == TEXT('\0'))
+						{
+							StringCchCopy(szPathFull, _countof(szPathFull), spFilePathList->front());
+						}
+						//TODO: if there are more than one file with same name, then prompt user choose
+
+					}
+				}
+				else
+				{
+					StringCchCopy(szPathFull, _countof(szPathFull), strFileName);
+				}
+			}
+
             CString path(szPathFull);
+            FTLASSERT(!path.IsEmpty());
             if (!path.IsEmpty())
             {
                 path.Replace(_T('/'), _T('\\'));
@@ -909,4 +935,11 @@ BOOL CLogItemView::OnEditGoTo(UINT nID)
         }
     }
     return bRet;
+}
+
+BOOL CLogItemView::OnEditClearCache(UINT nID)
+{
+	CLogManager& logManager = GetDocument()->m_FTLogManager;
+	logManager.ClearUserFullPathCache();
+	return TRUE;
 }

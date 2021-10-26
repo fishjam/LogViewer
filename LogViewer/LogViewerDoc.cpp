@@ -122,6 +122,7 @@ BOOL CLogViewerDoc::OnOpenDocument(LPCTSTR lpszPathName){
     API_VERIFY(m_FTLogManager.SetLogFiles(allLogFiles));
     if (bRet)
     {
+        m_VSIdeHandler.ClearActiveIDE();
         SendInitialUpdate();
         UpdateAllViews(NULL);
     }
@@ -154,6 +155,7 @@ void CLogViewerDoc::OnFileOpen()
             allLogFiles.Add(strFilePath);
         }
         m_FTLogManager.SetLogFiles(allLogFiles);
+        m_VSIdeHandler.ClearActiveIDE();
         SendInitialUpdate();
         UpdateAllViews(NULL);
     }
@@ -178,12 +180,14 @@ void CLogViewerDoc::OnFileSave()
 
 void CLogViewerDoc::OnFileClose()
 {
+    m_VSIdeHandler.ClearActiveIDE();
 	m_FTLogManager.ClearAllLogItems();
 	SendInitialUpdate();
 }
 
 void CLogViewerDoc::OnFileReload()
 {
+    m_VSIdeHandler.ClearActiveIDE();
 	m_FTLogManager.ReloadLogItems();
 	SendInitialUpdate();
 }
@@ -203,11 +207,12 @@ void CLogViewerDoc::OnFileReload()
 
 BOOL CLogViewerDoc::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
+    HRESULT hr = E_FAIL;
     _SelectActiveIde();
 
     if (m_VSIdeHandler.HadSelectedActiveIDE())
     {
-        m_VSIdeHandler.GoToLineInSourceCode(pszFileName,line);
+        COM_VERIFY(m_VSIdeHandler.GoToLineInSourceCode(pszFileName,line));
     }
     return TRUE;
 }

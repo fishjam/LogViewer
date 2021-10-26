@@ -100,11 +100,15 @@ public:
         return m_filesMap.empty();
     }
     BOOL ScanSourceFiles(const CString& strFolderPath);
-    SameNameFilePathListPtr FindFileFullPath(CString strFileName);
+    SameNameFilePathListPtr FindFileFullPath(const CString& strFileName);
+	VOID ClearUserFullPathCache();
+	VOID SetFullPathForUserCache(const CString& strFileLineCache, const CString& strFullPathUserSelect);
+	CString GetFullPathFromUserCache(const CString& strFileLineCache);
 protected:
     typedef std::vector<LogItemPointer>     LogItemArrayType;
     typedef LogItemArrayType::iterator      LogItemArrayIterator;
     typedef std::list<LogItemPointer>       LogItemListType;
+	typedef std::map<CString, CString>		UserSelectFullPathMap;
     //typedef std::back_insert_iterator< LogItemArrayType > back_ins_itr;
     
     FileName2FullPathMap        m_filesMap;
@@ -117,7 +121,7 @@ protected:
     LogItemArrayType            m_DisplayLogItems;
 
     MachinePidTidContainer      m_allMachinePidTidInfos;
-
+	UserSelectFullPathMap		m_userSelectFullPathMap;
     //ThreadIdContainer           m_AllLogThreadIds;
     //std::map<THREAD_ID_TYPE, BOOL>      m_AllLogThreadIdsChecked;
 

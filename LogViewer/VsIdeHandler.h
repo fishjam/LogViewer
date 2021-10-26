@@ -41,6 +41,7 @@ public:
     HRESULT GoToLineInSourceCode(LPCTSTR pszFileName,int line);
     HRESULT SetActiveIDE(IUnknown* pUnknown);
     BOOL    HadSelectedActiveIDE();
+    VOID    ClearActiveIDE();
 protected:
     CComPtr< IRunningObjectTable > m_pIRunningObjectTable;
     CComPtr< IEnumMoniker >   m_pEnumMoniker;

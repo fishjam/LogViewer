@@ -129,6 +129,7 @@ BEGIN
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
         MENUITEM SEPARATOR
         MENUITEM "Go to\tCtrl+G",               ID_EDIT_GOTO
+        MENUITEM "ClearCache",                  ID_EDIT_CLEAR_CACHE
     END
     POPUP "&View"
     BEGIN
@@ -246,6 +247,16 @@ BEGIN
     LTEXT           "SeqNum:",IDC_STATIC,19,28,30,8
 END
 
+IDD_DIALOG_SAME_FILE_LISTS DIALOGEX 0, 0, 497, 201
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Same Files List"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,371,180,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,440,180,50,14
+    LISTBOX         IDC_LIST_SAME_FILES,7,7,483,168,LBS_SORT | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -325,6 +336,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 82
     END
+
+    IDD_DIALOG_SAME_FILE_LISTS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 490
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 194
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -352,6 +371,11 @@ END
 //
 
 IDD_DIALOG_GOTO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_SAME_FILE_LISTS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

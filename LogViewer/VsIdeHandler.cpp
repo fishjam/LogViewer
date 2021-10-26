@@ -9,6 +9,13 @@ CVsIdeHandler::~CVsIdeHandler(void)
 {
 }
 
+VOID CVsIdeHandler::ClearActiveIDE()
+{
+    if (m_pActiveIEnvDTE)
+    {
+        m_pActiveIEnvDTE.Release();
+    }
+}
 BOOL CVsIdeHandler::HadSelectedActiveIDE()
 {
     HRESULT hr = E_FAIL;

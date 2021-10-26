@@ -60,7 +60,8 @@ public:
     afx_msg void OnDetailSelectCurrentPid();
     afx_msg void OnDetailSelectCurrentTid();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-    afx_msg BOOL OnEditGoTo(UINT nID);
+	afx_msg BOOL OnEditGoTo(UINT nID);
+	afx_msg BOOL OnEditClearCache(UINT nID);
 
     afx_msg void OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);

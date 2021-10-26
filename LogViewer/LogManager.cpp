@@ -204,6 +204,7 @@ BOOL CLogManager::ClearAllLogItems()
 
     m_allMachinePidTidInfos.clear();
     m_filesMap.clear();
+	m_userSelectFullPathMap.clear();
 
     return TRUE;
 }
@@ -590,150 +591,6 @@ BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
     return bRet;
 }
 
-// BOOL CLogManager::CheckFTLogFiles(const CStringArray &logFilePaths)
-// {
-//     BOOL bRet = FALSE;
-//     if (logFilePaths.GetSize() > 0)
-//     {
-//         bRet = TRUE;
-//     }
-//     return bRet;
-// }
-
-// BOOL CLogManager::ReadFTLogFile(LPCTSTR pszFilePath)
-// {
-//     BOOL bRet = FALSE;
-//     CFile file;
-//     API_VERIFY(file.Open(pszFilePath,CFile::modeRead | CFile::shareDenyWrite |CFile::typeBinary));
-//     if (bRet)
-//     {
-//         LONGLONG llLastTime = 0;
-//         do 
-//         {
-//             if (file.GetLength() < (sizeof(CFFastTrace::FTFILEHEADER) + sizeof(CFFastTrace::FTDATA)))
-//             {
-//                 FTLASSERT(FALSE); //至少应该写一个FTDATA
-//                 bRet = FALSE;
-//                 break;
-//             }
-//             UINT readCount = 0;
-//             CFFastTrace::FTFILEHEADER fileHeader = {0};
-//             readCount = file.Read(&fileHeader,sizeof(fileHeader));
-//             API_VERIFY(readCount == sizeof(fileHeader));
-//             FTLASSERT(FTFILESIG == fileHeader.dwSig);  //检查是否是 FTLog文件
-//             if (FTFILESIG != fileHeader.dwSig)
-//             {
-//                 bRet = FALSE;
-//                 break;
-//             }
-//             FTLTRACE(TEXT("ReadFTLogFile,file = %s, ItemCount = %d\n"),pszFilePath,fileHeader.lItemCount);
-// #if 0
-//             m_AllLogProcessIds.push_back(fileHeader.lPID);
-//             m_AllLogProcessIdsChecked[fileHeader.lPID] = TRUE;
-//             m_AllLogThreadIds.push_back(fileHeader.lTID);
-//             m_AllLogThreadIdsChecked[fileHeader.lTID] = TRUE;  //默认都是选择的(不过滤)
-// #endif
-//             //m_AllFtDatas.resize(m_AllFtDatas.size() + fileHeader.lItemCount);   //提前分配空间
-//             DWORD dwFtDataSize = sizeof(FTL::CFFastTrace::FTDATA) - sizeof(LPCTSTR);  //不要读最后的字符串指针
-//             //for (LONG lReadItemCount = 0; lReadItemCount < fileHeader.lItemCount; lReadItemCount++)
-//             while (bRet)
-//             {
-//                 LogItemPointer pLogItem(new LogItem);
-//                 pLogItem->size = sizeof(LogItem);
-// 
-//                 FTL::CFFastTrace::FTDATA dataItem = {0};
-//                 //读入每一个FTDATA的信息
-//                 readCount = file.Read(&dataItem, dwFtDataSize); 
-//                 API_VERIFY_EXCEPT1(readCount == dwFtDataSize, ERROR_SUCCESS);        //错误处理
-//                 if (readCount != dwFtDataSize)
-//                 {
-//                     if (readCount == 0 && GetLastError() == ERROR_SUCCESS)
-//                     {
-//                         //Read End
-//                         bRet = TRUE;
-//                         break;
-//                     }
-//                     FTLTRACEEX(FTL::tlWarn, TEXT("Read FTL Log Info Fail, want=%d, read=%d\n"),
-//                         dwFtDataSize, readCount);
-//                     break;
-//                 }
-// 
-//                 FTLASSERT(dataItem.lSeqNum > 0);				
-//                 FTLASSERT(dataItem.nTraceInfoLen > 0);
-//                 if (dataItem.nTraceInfoLen <= 0)
-//                 {
-//                     FTLTRACEEX(FTL::tlWarn, TEXT("nTraceInfoLen=%d\n"),
-//                         dataItem.nTraceInfoLen);
-//                     bRet = FALSE;
-//                     break;
-//                 }
-// 
-//                 pLogItem->seqNum = dataItem.lSeqNum;
-//                 pLogItem->level = dataItem.level;
-// 
-//                 //TODO:convert time
-//                 SYSTEMTIME	curSysTime = {0};
-//                 FileTimeToSystemTime(&dataItem.stTime, &curSysTime);
-// 
-//                 pLogItem->time = MAKELONGLONG(dataItem.stTime.dwLowDateTime, dataItem.stTime.dwHighDateTime);
-//                 pLogItem->traceInfoLen = dataItem.nTraceInfoLen;
-//                 pLogItem->processId = fileHeader.lPID;
-//                 pLogItem->threadId = fileHeader.lTID;
-//                 
-//                 
-//                 pLogItem->pszTraceInfo = new WCHAR[pLogItem->traceInfoLen]; //保存的结果始终都用 WCHAR 的(ANSI的转换后也会变大)
-//                 ZeroMemory((LPVOID)pLogItem->pszTraceInfo, pLogItem->traceInfoLen * sizeof(WCHAR));
-//                 LPVOID pVoidReadBuf = (LPVOID)pLogItem->pszTraceInfo;  //先设置读取缓存的值
-// //#ifndef UNICODE 
-//                 //if (fileHeader.bIsUnicode) //如果是非UNICODE编译方式，但 File 是Unicode的，需要重新分配缓存
-//                 //{
-//                 //    pVoidReadBuf = new WCHAR[pLogItem->nTraceInfoLen];
-//                 //    ZeroMemory(pVoidReadBuf, pLogItem->nTraceInfoLen * sizeof(WCHAR));
-//                 //}
-// //#endif
-//                 DWORD dwCharSize = 0;
-//                 if(fileHeader.bIsUnicode)
-//                 {
-//                     dwCharSize = sizeof(WCHAR);
-//                 }
-//                 else
-//                 {
-//                     dwCharSize = sizeof(CHAR);
-//                 }
-// 
-//                 //读入FTDATA关联的字符串
-//                 readCount = file.Read(pVoidReadBuf,pLogItem->traceInfoLen * dwCharSize);
-//                 API_VERIFY((LONG)readCount == (LONG)(pLogItem->traceInfoLen * dwCharSize));                //错误处理
-//                 if (!bRet)
-//                 {
-//                     break;
-//                 }
-//                 if (FALSE == fileHeader.bIsUnicode) //File 是非Unicode的，需要转换成Unicode字符串
-//                 {
-//                     ASSERT(FALSE);
-//                 }
-// 
-//                 //FTLTRACE(TEXT("pFTData->pszTraceInfo(%d) = %s"),lReadItemCount,pLogItem->pszTraceInfo);
-//                 //pLogItem->processId = fileHeader.lPID;
-//                 //pLogItem->threadId = fileHeader.lTID;
-//                 if (llLastTime == 0)
-//                 {
-//                     pLogItem->elapseTime = 0;
-//                 }
-//                 else
-//                 {
-//                     pLogItem->elapseTime = pLogItem->time - llLastTime;
-//                 }
-//                 llLastTime = pLogItem->time;
-//                 //加入队列
-//                 m_allInitLogItems.push_back(pLogItem);
-//             }
-//         } while (FALSE);
-//         file.Close();
-//     }
-//     return bRet;
-// }
-
 int CLogManager::_ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage)
 {
     int srcLength = (int)srcInfo.length();
@@ -789,13 +646,33 @@ BOOL CLogManager::ScanSourceFiles(const CString& strFolderPath)
     return bRet;
 }
 
-SameNameFilePathListPtr CLogManager::FindFileFullPath(CString strFileName) {
+SameNameFilePathListPtr CLogManager::FindFileFullPath(const CString& strFileName) {
     FileName2FullPathMap::iterator iter = m_filesMap.find(strFileName);
     if (iter != m_filesMap.end())  //find
     {
         return iter->second;
     }
     return nullptr;
+}
+
+VOID CLogManager::ClearUserFullPathCache()
+{
+	m_userSelectFullPathMap.clear();
+}
+
+VOID CLogManager::SetFullPathForUserCache(const CString& strFileLineCache, const CString& strFullPathUserSelect)
+{
+	m_userSelectFullPathMap[strFileLineCache] = strFullPathUserSelect;
+}
+
+CString CLogManager::GetFullPathFromUserCache(const CString& strFileLineCache)
+{
+	UserSelectFullPathMap::iterator iter = m_userSelectFullPathMap.find(strFileLineCache);
+	if (iter!= m_userSelectFullPathMap.end())
+	{
+		return iter->second;
+	}
+	return TEXT("");
 }
 
 LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem)
@@ -818,16 +695,23 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
             {
                 SYSTEMTIME st = {0};
                 GetLocalTime(&st);
-                int microSecond = 0;//, ignore, zooHour = 0, zooMinute = 0;
-                if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
-                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
-                    )
+                int microSecond = 0; //微秒
+                int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
+                if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS")))
+                {
+                    m_logConfig.m_dateTimeType = dttDateTime;
+                    //2017-06-12 18:21:34.193000
+                    sscanf_s(strTime.c_str(), "%4d-%2d-%2d%*c%2d:%2d:%2d%*c%6d",
+                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
+                    st.wMilliseconds = (WORD)(microSecond / 1000);
+                }
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS")))
                 {
                     m_logConfig.m_dateTimeType = dttDateTime;
                     //2017-06-12 18:21:34.193
                     sscanf_s(strTime.c_str(), "%4d-%2d-%2d%*c%2d:%2d:%2d%*c%3d",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = (WORD)microSecond;
+                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+                    st.wMilliseconds = (WORD)milliSecond;
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
@@ -843,8 +727,14 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
                     m_logConfig.m_dateTimeType = dttTime;
                     sscanf_s(strTime.c_str(), "%2d:%2d:%2d%*c%3d",
+                        &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+                    st.wMilliseconds = (WORD)milliSecond;
+                }
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSS"))) {
+                    m_logConfig.m_dateTimeType = dttTime;
+                    sscanf_s(strTime.c_str(), "%2d:%2d:%2d%*c%6d",
                         &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = (WORD)microSecond;
+                    st.wMilliseconds = (WORD)(microSecond/1000);
                 }
                 else{
                     FTLASSERT(FALSE);
@@ -916,6 +806,12 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         pItem->processId = preLogItem->processId;
         pItem->threadId = preLogItem->threadId;
         pItem->time = preLogItem->time;
+		if (preLogItem->pszSrcFileName && preLogItem->srcFileline > 0)
+		{
+			pItem->srcFileline = preLogItem->srcFileline;
+			pItem->pszSrcFileName = _CopyItemInfo(preLogItem->pszSrcFileName);
+		}
+		
     }
     pItem->traceInfoLen = _ConvertItemInfo(strOneLog, pItem->pszTraceInfo, m_codePage);
     return pItem;

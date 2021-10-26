@@ -212,6 +212,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DialogGoTo.cpp" />
+    <ClCompile Include="DialogSameFilesList.cpp" />
     <ClCompile Include="LogFilterView.cpp" />
     <ClCompile Include="LogItemView.cpp" />
     <ClCompile Include="LogManager.cpp" />
@@ -234,6 +235,7 @@
     <ClInclude Include="..\LogFilterBase.h" />
     <ClInclude Include="..\LogViewerDefine.h" />
     <ClInclude Include="DialogGoTo.h" />
+    <ClInclude Include="DialogSameFilesList.h" />
     <ClInclude Include="LogFilterView.h" />
     <ClInclude Include="LogItemView.h" />
     <ClInclude Include="LogManager.h" />
