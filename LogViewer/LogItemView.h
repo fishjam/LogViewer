@@ -29,7 +29,7 @@ protected:
     LogItemContentType m_SortContentType;
     BOOL m_bSortAscending;
     CSortHeaderCtrl	m_ctlHeader;
-    UINT m_nLastGotToSeqNumber;
+    UINT m_nLastGotToLineNumber;
 
     void Sort( LogItemContentType contentType, BOOL bAscending );
     //static int CALLBACK CompareFunction( LPARAM lParam1, LPARAM lParam2, LPARAM lParamData );
@@ -37,7 +37,12 @@ protected:
     void PrepareCache(int iFrom, int iTo);
     void GetDispInfo(LVITEM* pItem);
     int FindItem(int iStart, LVFINDINFO* plvfi);
+
     LVHITTESTINFO GetCurrentSelectInfo();
+    LONG _GetSelectedLines(LogIndexContainer& selectedItemsList, INT& nSelectSubItem);
+
+    CString _GetSelectedText(int textType);
+
     void _HighlightSameThread(LogItemPointer pCompareLogItem);
     DECLARE_MESSAGE_MAP()
 public:
@@ -67,6 +72,8 @@ public:
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);
 private:
     int _GetSelectedIdTypeValue(MachinePIdTIdType& idType);
+    UINT _GetCurrentFirstSelectLine();
+    BOOL _GotoSpecialLine(UINT nGotoLineNumber);
 };
 
 

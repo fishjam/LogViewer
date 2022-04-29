@@ -6,6 +6,7 @@
 #include "LogItemView.h"
 #include "LogManager.h"
 #include "MachinePidTidTreeView.h"
+#include "DialogSourceHistory.h"
 #include "DialogGoTo.h"
 #include "DialogSameFilesList.h"
 
@@ -20,7 +21,8 @@ struct strColumnInfo
 
 static strColumnInfo	columnInfos[] = 
 {
-    {TEXT("SeqNum"), 50,},
+    {TEXT("Line"), 50,},
+    {TEXT("Seq"), 50,},
     {TEXT("Machine"), 50,},
     {TEXT("PID"), 50,},
     {TEXT("TID"), 80,},
@@ -49,11 +51,11 @@ IMPLEMENT_DYNCREATE(CLogItemView, CListView)
 CLogItemView::CLogItemView()
 {
     m_bInited = FALSE;
-    m_SortContentType = type_Sequence;
+    m_SortContentType = type_LineNum;
     m_bSortAscending = TRUE;
     m_dwDefaultStyle |= ( LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA );
     m_ptContextMenuClick.SetPoint(-1, -1);
-    m_nLastGotToSeqNumber = 0L;
+    m_nLastGotToLineNumber = 0L;
 }
 
 CLogItemView::~CLogItemView()
@@ -231,11 +233,18 @@ void CLogItemView::OnHdnItemclickListAllLogitems(NMHDR *pNMHDR, LRESULT *pResult
 
 void CLogItemView::Sort(LogItemContentType contentType, BOOL bAscending )
 {
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
+
+    UINT nPreSelectItemLineIndex = _GetCurrentFirstSelectLine();
+    FTLTRACE("before sort, previous select line index = %d", nPreSelectItemLineIndex);
+
     m_SortContentType = contentType;
     m_bSortAscending = bAscending;
     m_ctlHeader.SetSortArrow(m_SortContentType,m_bSortAscending);
-    GetDocument()->m_FTLogManager.SortDisplayItem(m_SortContentType,bAscending);
-    Invalidate();
+    logManager.SortDisplayItem(m_SortContentType,bAscending);
+    
+    _GotoSpecialLine(nPreSelectItemLineIndex);
     //VERIFY( GetListCtrl().SortItems( CompareFunction, reinterpret_cast<DWORD>( this ) ) );
 }
 
@@ -258,7 +267,11 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
         }
         switch(pItem->iSubItem)
         {
-        case type_Sequence:
+        case type_LineNum:
+            strFormat.Format(TEXT("%d"), pLogItem->lineNum);
+            StringCchCopy(pItem->pszText, pItem->cchTextMax - 1, (LPCTSTR)strFormat);
+            break;
+        case type_SeqNum:
             strFormat.Format(TEXT("%d"),pLogItem->seqNum);
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             break;
@@ -279,10 +292,11 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             {
                 int microSec = 0;
                 SYSTEMTIME st = {0};
-                if(pLogItem->time > MIN_TIME_WITH_DAY_INFO){
+                if (dttDateTime == logManager.m_logConfig.m_dateTimeType)
+                {
                     //带日期的时间
                     //FILETIME localFileTime = {0};
-                    FILETIME tm;
+                    FILETIME tm = { 0 };
                     tm.dwHighDateTime = HILONG(pLogItem->time);//(pLogItem->time & 0xFFFFFFFF00000000) >> 32;
                     tm.dwLowDateTime = LOLONG(pLogItem->time);// ( pLogItem->time & 0xFFFFFFFF);
                     API_VERIFY(FileTimeToSystemTime(&tm,&st));
@@ -291,8 +305,9 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
                         st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
                 }else{
-                    microSec = pLogItem->time % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
-                    LONGLONG tmpTime = pLogItem->time / TIME_RESULT_TO_MILLISECOND;
+                    LONGLONG disTime = pLogItem->time % MIN_TIME_WITH_DAY_INFO;
+                    microSec = disTime % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
+                    LONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
                     st.wSecond = tmpTime % 60;
                     tmpTime /= 60;
                     st.wMinute = tmpTime % 60;
@@ -328,7 +343,7 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
                 }
                 break;
             }
-        case type_FileName:
+        case type_FilePos:
             {
                 if (NULL != pLogItem->pszSrcFileName)
                 {
@@ -420,15 +435,20 @@ BOOL CLogItemView::OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LRE
     return TRUE;
 
 }
-void CLogItemView::OnUpdate(CView* pSender, LPARAM /*lHint*/, CObject* /*pHint*/)
+void CLogItemView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
     //if (pSender != this)
     {
         CLogViewerDoc* pDoc = GetDocument();
-        LONG lLogItemCount = pDoc->m_FTLogManager.GetDisplayLogItemCount();
+        CLogManager& rLogManager = pDoc->m_FTLogManager;
         CListCtrl& ListCtrl = GetListCtrl();
+
+        LONG lLogItemCount = rLogManager.GetDisplayLogItemCount();
         ListCtrl.SetItemCount(lLogItemCount);
         FTLTRACE(TEXT("CLogItemView::OnUpdate, logItemCount=%ld"), lLogItemCount);
+
+        //TODO: is there better solution?
+        _GotoSpecialLine(rLogManager.GetActiveLineIndex());
     }
 }
 
@@ -439,7 +459,7 @@ void CLogItemView::OnNMClick(NMHDR *pNMHDR, LRESULT *pResult)
     NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
     UNREFERENCED_PARAMETER(pNMListView);
 
-    TRACE(TEXT("click at iItem = %d,iSubItem=%d\n"), pNMListView->iItem, pNMListView->iSubItem);
+    FTLTRACE(TEXT("click at iItem = %d,iSubItem=%d"), pNMListView->iItem, pNMListView->iSubItem);
 }
 
 void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
@@ -458,6 +478,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
         CLogManager& rLogManager = GetDocument()->m_FTLogManager;
         LogItemPointer pLogItem = rLogManager.GetDisplayLogItem(pNMListView->iItem);
 
+        //找源码对应的文件名和行号
         if (pLogItem->pszSrcFileName != NULL && pLogItem->srcFileline != 0)
         {
             strFileName = pLogItem->pszSrcFileName;
@@ -486,6 +507,8 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
                 }
             }
         }
+
+        //如果找到文件名和行号,可以尝试通过源码定位
         if (!strFileName.IsEmpty() && line != 0)
         {
 			TCHAR szPathFull[MAX_PATH] = { 0 };
@@ -503,12 +526,12 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 				{
 					if (rLogManager.NeedScanSourceFiles())
 					{
-						CString strExistSourceDir = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR);
-
-						CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
-						if (dirBrowser.DoModal())
+						//CString strExistSourceDir = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR);
+                        CDialogSourceHistory dlgSourceHistory(this);
+						//CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
+						if (dlgSourceHistory.DoModal())
 						{
-							CString strFolderPath = dirBrowser.GetSelectPath();
+							CString strFolderPath = dlgSourceHistory.GetSelectPath();
 							AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR, strFolderPath);
 							rLogManager.ScanSourceFiles(strFolderPath);
 						}
@@ -517,7 +540,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 					SameNameFilePathListPtr spFilePathList = rLogManager.FindFileFullPath(ATLPath::FindFileName(strFileName));
 					if (spFilePathList != nullptr)
 					{
-						int nSameFileNameCount = spFilePathList->size();
+						int nSameFileNameCount = (int)spFilePathList->size();
 						if (nSameFileNameCount > 1)
 						{
 							FTLTRACEEX(FTL::tlWarn, TEXT("find %d source files with %s"), nSameFileNameCount, strFileName);
@@ -533,8 +556,10 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 							StringCchCopy(szPathFull, _countof(szPathFull), spFilePathList->front());
 						}
 						//TODO: if there are more than one file with same name, then prompt user choose
-
-					}
+                    }
+                    else {
+                        // can not find file in special folder
+                    }
 				}
 				else
 				{
@@ -543,11 +568,15 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 			}
 
             CString path(szPathFull);
-            FTLASSERT(!path.IsEmpty());
             if (!path.IsEmpty())
             {
                 path.Replace(_T('/'), _T('\\'));
                 API_VERIFY(GetDocument()->GoToLineInSourceCode(path, line));
+            }
+            else {
+                FTL::FormatMessageBox(m_hWnd, TEXT("Find file failed"), MB_OK,
+                    TEXT("Can not find source file \"%s\" "),
+                    strFileName);
             }
         }
      }
@@ -595,63 +624,123 @@ LVHITTESTINFO CLogItemView::GetCurrentSelectInfo()
     //CLogManager& logManager = GetDocument()->m_FTLogManager;
     CListCtrl& ListCtrl = GetListCtrl();
 
-    LVHITTESTINFO lvHistTestInfo = {0};
+    LVHITTESTINFO lvHistTestInfo = { 0 };
     lvHistTestInfo.pt = m_ptContextMenuClick;
     ListCtrl.ScreenToClient(&lvHistTestInfo.pt);
     ListCtrl.SubItemHitTest(&lvHistTestInfo);
     //ListCtrl.HitTest(&lvHistTestInfo);
-    
+
     return lvHistTestInfo;
 }
+
+LONG CLogItemView::_GetSelectedLines(LogIndexContainer& selectedItemsList, INT& nSelectSubItem)
+{
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+    CListCtrl& ListCtrl = GetListCtrl();
+    LONG nSelectedCount = 0;
+
+    LVHITTESTINFO lvHistTestInfo = { 0 };
+    lvHistTestInfo.pt = m_ptContextMenuClick;
+    ListCtrl.ScreenToClient(&lvHistTestInfo.pt);
+    ListCtrl.SubItemHitTest(&lvHistTestInfo);
+
+    nSelectSubItem = lvHistTestInfo.iSubItem;
+
+    POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+    while (pos != NULL)
+    {
+        int nSelectItem = ListCtrl.GetNextSelectedItem(pos);
+        selectedItemsList.push_back(nSelectItem);
+        nSelectedCount++;
+    }
+    return nSelectedCount;
+}
+
+//TODO: textType: 0(item), 1(line), 2(full)
+CString CLogItemView::_GetSelectedText(int textType)
+{
+    CListCtrl& listCtrl = GetListCtrl();
+
+    FTL::CFStringFormater strFormater;
+    LogIndexContainer selectedItemList;
+    INT nSelectedSubItem = -1;
+    LONG nSelectCount = _GetSelectedLines(selectedItemList, nSelectedSubItem);
+
+    if (nSelectCount > 0 && nSelectedSubItem != -1)
+    {
+        for (LogIndexContainerIter iter = selectedItemList.begin(); iter != selectedItemList.end(); ++iter)
+        {
+            CString strText;
+            switch (textType)
+            {
+                case 0:  //item
+                    strText = listCtrl.GetItemText(*iter, nSelectedSubItem);
+                    break;
+                case 1: //line
+                {
+                    int columnCount = _countof(columnInfos);
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        CString strItemText = listCtrl.GetItemText(*iter, i);
+                        if (strText.IsEmpty())
+                        {
+                            //first column
+                            strText.AppendFormat(TEXT("%s"), strItemText);
+                        }
+                        else {
+                            strText.AppendFormat(TEXT(",%s"), strItemText);
+                        }
+                    }
+                    break;
+                }
+                case 2: //full(TODO)
+                    break;
+            }
+
+            if (NULL == strFormater.GetString())
+            {
+                //first line
+                strFormater.AppendFormat(TEXT("%s"), strText);
+            }
+            else {
+                strFormater.AppendFormat(TEXT("\r\n%s"), strText);
+            }
+        }
+    }
+    return strFormater.GetString();
+}
+
 void CLogItemView::OnDetailsCopyItemText()
 {
     BOOL bRet = FALSE;
-    CString strText;
+    CString strFullText = _GetSelectedText(0);
 
-    CListCtrl& listCtrl = GetListCtrl();
-    LVHITTESTINFO lvHistTestInfo = GetCurrentSelectInfo();
-    if (lvHistTestInfo.iItem != -1 && lvHistTestInfo.iSubItem != -1)
+    if(!strFullText.IsEmpty())
     {
-        strText = listCtrl.GetItemText(lvHistTestInfo.iItem, lvHistTestInfo.iSubItem);
-        if(!strText.IsEmpty())
-        {
-            API_VERIFY(CFSystemUtil::CopyTextToClipboard(strText)); //, m_hWnd);
-        }
+        API_VERIFY(CFSystemUtil::CopyTextToClipboard(strFullText)); //, m_hWnd);
     }
+
     if (!bRet)
     {
-        FormatMessageBox(m_hWnd, TEXT("CopyText Error"), MB_OK | MB_ICONERROR, 
-            TEXT("pos=[%d,%d], text=%s, Last Error=%d"), 
-            lvHistTestInfo.iItem, lvHistTestInfo.iSubItem, strText, GetLastError());
+        FormatMessageBox(m_hWnd, TEXT("CopyText Error"), MB_OK | MB_ICONERROR,
+            TEXT("CopyTextToClipboard, Error=%d"), GetLastError());
     }
 }
 
 void CLogItemView::OnDetailsCopyLineText()
 {
     BOOL bRet = FALSE;
-    CString strLineText, strItemText;
+    CString strFullText = _GetSelectedText(1);
 
-    CListCtrl& listCtrl = GetListCtrl();
-    LVHITTESTINFO lvHistTestInfo = GetCurrentSelectInfo();
-    if (lvHistTestInfo.iItem != -1)
+    if (!strFullText.IsEmpty())
     {
-        int columnCount = _countof(columnInfos);
-        for (int i = 0; i < columnCount; i++)
-        {
-            strItemText = listCtrl.GetItemText(lvHistTestInfo.iItem, i);
-            strLineText += strItemText;
-            if (i != columnCount - 1)
-            {
-                strLineText += TEXT(",");
-            }
-        }
-        API_VERIFY(CFSystemUtil::CopyTextToClipboard(strLineText)); //, m_hWnd);
+        API_VERIFY(CFSystemUtil::CopyTextToClipboard(strFullText)); //, m_hWnd);
     }
+
     if (!bRet)
     {
-        FormatMessageBox(m_hWnd, TEXT("CopyText Error"), MB_OK | MB_ICONERROR, 
-            TEXT("pos=[%d,%d], text=%s, Last Error=%d"), 
-            lvHistTestInfo.iItem, lvHistTestInfo.iSubItem, strLineText, GetLastError());
+        FormatMessageBox(m_hWnd, TEXT("CopyText Error"), MB_OK | MB_ICONERROR,
+            TEXT("CopyTextToClipboard, Error=%d"), GetLastError());
     }
 }
 
@@ -700,7 +789,7 @@ void CLogItemView::OnDetailDeleteSelectItems() {
     }
 
     int nSelectItem = -1;
-    std::set<LONG> delItemsSeqNum;
+    std::set<LONG> delItemsLineNum;
     std::list<INT> delItemsIndex;
     POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
     while (pos != NULL)
@@ -709,14 +798,14 @@ void CLogItemView::OnDetailDeleteSelectItems() {
         LogItemPointer pLogItem = logManager.GetDisplayLogItem(nSelectItem);
         if (pLogItem)
         {
-            delItemsSeqNum.insert(pLogItem->seqNum);
+            delItemsLineNum.insert(pLogItem->lineNum);
             delItemsIndex.push_back(nSelectItem);
-            //TRACE("will delete seq: %ld\n", pLogItem->seqNum);
+            //TRACE("will delete seq: %ld\n", pLogItem->lineNum);
         }
     }
-    if (!delItemsSeqNum.empty())
+    if (!delItemsLineNum.empty())
     {
-        logManager.DeleteItems(delItemsSeqNum);
+        logManager.DeleteItems(delItemsLineNum);
         
         //clear select(is there better way?)
         std::list<INT>::iterator iter = delItemsIndex.begin();
@@ -773,10 +862,11 @@ void CLogItemView::OnDetailSelectCurrentPid() {
     if(-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
         CLogManager& logManager = GetDocument()->m_FTLogManager;
 
+        UINT nCurSelectLine = _GetCurrentFirstSelectLine();
         logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostProcessId);
         GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
         OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
-        Invalidate();
+        _GotoSpecialLine(nCurSelectLine);
     }
 }
 
@@ -786,10 +876,11 @@ void CLogItemView::OnDetailSelectCurrentTid() {
     if (-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
         CLogManager& logManager = GetDocument()->m_FTLogManager;
 
+        UINT nCurSelectLine = _GetCurrentFirstSelectLine();
         logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostThreadId);
         GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
         OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
-        Invalidate();
+        _GotoSpecialLine(nCurSelectLine);
     }
 }
 
@@ -828,16 +919,24 @@ BOOL CLogItemView::OnEraseBkgnd(CDC* pDC)
 void CLogItemView::OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult)
 {
     LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+    CLogManager& rLogManager = GetDocument()->m_FTLogManager;
+
     // TODO: Add your control notification handler code here
     *pResult = 0;
-    ATLTRACE(TEXT("OnLvnItemchanged, iItem=%d,iSubItem=%d, uNewState=%d, uOldState=%d\n"), 
+    FTLTRACE(TEXT("OnLvnItemchanged, iItem=%d,iSubItem=%d, uNewState=%d, uOldState=%d"), 
         pNMLV->iItem, pNMLV->iSubItem, pNMLV->uNewState, pNMLV->uOldState);
 
     //会响应三次
     if (pNMLV->iItem >= 0 
         && ((pNMLV->uNewState & (LVIS_FOCUSED | LVIS_SELECTED))!= 0) )
     {
-        GetDocument()->m_FTLogManager.setActiveItemIndex(pNMLV->iItem);
+        LONG lineIndex = INVALID_LINE_INDEX;
+        LogItemPointer pLogItem = rLogManager.GetDisplayLogItem(pNMLV->iItem);
+        if (pLogItem)
+        {
+            lineIndex = pLogItem->lineNum;
+        }
+        rLogManager.setActiveItemIndex(lineIndex, pNMLV->iItem);
         GetDocument()->UpdateAllViews(this);
     }
 }
@@ -847,8 +946,20 @@ void CLogItemView::OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI)
     CLogManager& logManager = GetDocument()->m_FTLogManager;
     CListCtrl& ListCtrl = GetListCtrl();
 
-    int nFirstSeqNum = 0;
-    int nSelectedCount = 0;
+    UINT nFirstLineNum = _GetCurrentFirstSelectLine();
+    UINT nSelectedCount = ListCtrl.GetSelectedCount();
+
+    CString strFormat;
+    strFormat.Format(ID_INDICATOR_SELECTED_LOGITEM, nFirstLineNum, nSelectedCount);
+    pCmdUI->SetText(strFormat);
+}
+
+UINT CLogItemView::_GetCurrentFirstSelectLine()
+{
+    CListCtrl& ListCtrl = GetListCtrl();
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+    UINT nCurrentFirstSelectLine = INVALID_LINK_INDEX;
     POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
     if (pos != NULL)
     {
@@ -856,82 +967,94 @@ void CLogItemView::OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI)
         LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
         if (pLogItem)
         {
-            nFirstSeqNum = pLogItem->seqNum;
+            nCurrentFirstSelectLine = pLogItem->lineNum;
         }
     }
-    nSelectedCount = ListCtrl.GetSelectedCount();
+    return nCurrentFirstSelectLine;
+}
 
-    CString strFormat;
-    strFormat.Format(ID_INDICATOR_SELECTED_LOGITEM, nFirstSeqNum, nSelectedCount);
-    pCmdUI->SetText(strFormat);
+BOOL CLogItemView::_GotoSpecialLine(UINT nGotoLineNumber) 
+{
+    FUNCTION_BLOCK_TRACE(10);
+    BOOL bRet = FALSE;
+    CListCtrl& ListCtrl = GetListCtrl();
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+    if (INVALID_LINE_INDEX == nGotoLineNumber)
+    {
+        FTLASSERT(TEXT("invalid line index")); //example: user have not select any line before sort
+		Invalidate();
+        return FALSE;
+    }
+
+//     POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
+//     while (pos != NULL)
+//     {
+//         int oldSelectItem = ListCtrl.GetNextSelectedItem(pos);
+//         ListCtrl.SetItemState(oldSelectItem, 0, LVIS_SELECTED);
+//     }
+    //Invalidate();
+
+    int nClosestItem = 0, nClosestItemLineNum = 0;
+
+    //选择用户指定的
+    SortContent sortContent = logManager.GetFirstSortContent();
+    if (type_LineNum == sortContent.contentType && sortContent.bSortAscending
+        && logManager.GetTotalLogItemCount() == logManager.GetDisplayLogItemCount()  //no filter
+        )
+    {
+        nClosestItem = nGotoLineNumber - 1; //listCtrl 中是 0 基址的
+        nClosestItemLineNum = nGotoLineNumber;
+    }
+    else {
+        //需要遍历
+        int nTotalCount = ListCtrl.GetItemCount();
+        for (int nItem = 0; nItem < nTotalCount; nItem++)
+        {
+            LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
+            FTLASSERT(pLogItem);
+            if (pLogItem) {
+                if (pLogItem->lineNum == nGotoLineNumber) {
+                    //准确找到
+                    nClosestItem = nItem;
+                    nClosestItemLineNum = nGotoLineNumber;
+                    break;
+                }
+
+                LONG diff1 = FTL_ABS((LONG)nGotoLineNumber - pLogItem->lineNum);
+                LONG diff2 = FTL_ABS((LONG)nGotoLineNumber - nClosestItemLineNum);
+                if (diff1 <= diff2)
+                {
+                    nClosestItem = nItem;
+                    nClosestItemLineNum = pLogItem->lineNum;
+                }
+            }
+        }
+    }
+
+    FTLTRACE(TEXT("try got %d, real %d, item index=%d"),
+        nGotoLineNumber, nClosestItemLineNum, nClosestItem);
+
+    API_VERIFY(ListCtrl.EnsureVisible(nClosestItem, TRUE));
+    ListCtrl.SetItemState(nClosestItem, LVIS_SELECTED, LVIS_SELECTED);
+    ListCtrl.SetSelectionMark(nClosestItem);
+
+    Invalidate();
+    return bRet;
 }
 
 BOOL CLogItemView::OnEditGoTo(UINT nID)
 {
     BOOL bRet = TRUE;
-    CDialogGoTo dlg(m_nLastGotToSeqNumber, this);
+    CDialogGoTo dlg(m_nLastGotToLineNumber, this);
     if (dlg.DoModal())
     {
         CLogManager& logManager = GetDocument()->m_FTLogManager;
-        UINT nGotoSeqNumber = dlg.GetGotoSeqNumber();
-        if (nGotoSeqNumber >= 0 && nGotoSeqNumber < logManager.GetTotalLogItemCount())
+        UINT nGotoLineNumber = dlg.GetGotoLineNumber();
+        if (nGotoLineNumber >= 0 && nGotoLineNumber < (UINT)logManager.GetTotalLogItemCount())
         {
-            m_nLastGotToSeqNumber = nGotoSeqNumber;
-
-            CListCtrl& ListCtrl = GetListCtrl();
-
-            POSITION pos = ListCtrl.GetFirstSelectedItemPosition();
-            while (pos != NULL)
-            {
-                int oldSelectItem = ListCtrl.GetNextSelectedItem(pos);
-                ListCtrl.SetItemState(oldSelectItem, 0, LVIS_SELECTED);
-            }
-            Invalidate();
-
-            int nClosestItem = 0, nClosestItemSeqNum = 0;
-
-            //选择用户指定的
-            SortContent sortContent = logManager.GetFirstSortContent();
-            if (type_Sequence == sortContent.contentType && sortContent.bSortAscending
-                && logManager.GetTotalLogItemCount() == logManager.GetDisplayLogItemCount()  //no filter
-                )
-            {
-                nClosestItem = nGotoSeqNumber - 1; //listCtrl 中是 0 基址的
-                nClosestItemSeqNum = nGotoSeqNumber;
-            }
-            else {
-                //需要遍历
-                int nTotalCount = ListCtrl.GetItemCount();
-                for (int nItem = 0; nItem < nTotalCount; nItem++)
-                {
-                    LogItemPointer pLogItem = logManager.GetDisplayLogItem(nItem);
-                    FTLASSERT(pLogItem);
-                    if (pLogItem) {
-                        if (pLogItem->seqNum == nGotoSeqNumber) {
-                            //准确找到
-                            nClosestItem = nItem;
-                            nClosestItemSeqNum = nGotoSeqNumber;
-                            break;
-                        }
-
-                        LONG diff1 = FTL_ABS((LONG)nGotoSeqNumber - pLogItem->seqNum);
-                        LONG diff2 = FTL_ABS((LONG)nGotoSeqNumber - nClosestItemSeqNum);
-                        if ( diff1 <= diff2)
-                        {
-                            nClosestItem = nItem;
-                            nClosestItemSeqNum = pLogItem->seqNum;
-                        }
-                    }
-                }
-            }
-
-            FTLTRACE(TEXT("try got %d, real %d, item index=%d"), 
-                nGotoSeqNumber, nClosestItemSeqNum, nClosestItem);
-
-            API_VERIFY(ListCtrl.EnsureVisible(nClosestItem, TRUE));
-            ListCtrl.SetItemState(nClosestItem, LVIS_SELECTED, LVIS_SELECTED);
-            ListCtrl.SetSelectionMark(nClosestItem);
-
+            API_VERIFY(_GotoSpecialLine(nGotoLineNumber));
+            m_nLastGotToLineNumber = nGotoLineNumber;
         }
     }
     return bRet;

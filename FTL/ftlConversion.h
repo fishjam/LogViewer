@@ -3,9 +3,7 @@
 
 #pragma once
 
-#ifndef FTL_BASE_H
-#  error ftlConversion.h requires ftlbase.h to be included first
-#endif
+#include "ftlDefine.h"
 
 /************************************************************************************************************
 * CodePage -- 代码页,是Windows为不同的字符编码方案所分配的一个数字编号。
@@ -36,6 +34,114 @@
 
 namespace FTL
 {
+#ifndef DEFAULT_MEMALLOCATOR_FIXED_COUNT
+#define DEFAULT_MEMALLOCATOR_FIXED_COUNT 32
+#endif 
+
+	//! 方便的管理需要分配的临时内存，在类的构造中分配内存，析构中释放
+	//! 是否可能生成小的内存碎片？使用Pool优化？
+	enum MemoryAllocType
+	{
+		matNew,             //使用new分配，使用delete释放，为了方便管理，即使只分配一个，也使用数组方式
+		matVirtualAlloc,    //使用VirtualAlloc直接在进程的地址空间中保留一快内存(既非堆又非栈)，速度快
+		matLocalAlloc,      //使用LocalAlloc分配,LocalFree释放,主要是为了兼容老的程序?
+		//matMalloca,         //使用 _malloca 在栈上分配,通过 _freea 释放
+	};
+
+	template <typename T, UINT DefaultFixedCount = DEFAULT_MEMALLOCATOR_FIXED_COUNT, MemoryAllocType allocType = matNew>
+	class CFMemAllocator
+	{
+		//和ATL中的 CTempBuffer 模板类比较
+		DISABLE_COPY_AND_ASSIGNMENT(CFMemAllocator);
+	public:
+		FTLINLINE CFMemAllocator();
+		FTLINLINE CFMemAllocator(DWORD nCount, BOOL bAlignment = FALSE);
+		FTLINLINE ~CFMemAllocator();
+		FTLINLINE T* GetMemory(UINT nMaxSize);
+		FTLINLINE T* GetMemory();
+		FTLINLINE operator T*()
+		{
+			if (!m_pMem && m_nCount <= DefaultFixedCount)
+			{
+				return m_FixedMem;
+			}
+			return m_pMem;
+		}
+
+		FTLINLINE T* Detatch();
+		FTLINLINE UINT GetCount() const;
+	protected:
+		FTLINLINE VOID _Init(DWORD nCount, BOOL bAlignment);
+		FTLINLINE UINT _AdjustAlignmentSize(UINT nCount);
+		FTLINLINE VOID _FreeMemory();
+		FTLINLINE UINT _GetBlockSize(UINT nMaxCount);
+	private:
+		T*              m_pMem;
+		T               m_FixedMem[DefaultFixedCount];
+		MemoryAllocType m_allocType;
+		UINT            m_nCount;
+		BOOL            m_bAlignment;
+	};
+
+	//! 字符串格式化，可以根据传入的格式化字符长度自动调整，析构时释放分配的内存
+	class CFStringFormater
+	{
+		DISABLE_COPY_AND_ASSIGNMENT(CFStringFormater);
+	public:
+		//可以分配的最大内存空间为 : dwInitAllocLength * dwMaxBufferTimes(注意：dwMaxBufferTimes 最好是2的倍数)
+		FTLINLINE CFStringFormater(DWORD dwMaxBufferLength = MAX_BUFFER_LENGTH);
+		FTLINLINE virtual ~CFStringFormater();
+		FTLINLINE BOOL Reset(DWORD dwNewLength = 0);
+		FTLINLINE VOID Clear();  //清除内容
+		FTLINLINE HRESULT __cdecl Format(LPCTSTR lpszFormat, ...);
+		FTLINLINE HRESULT __cdecl FormatV(LPCTSTR lpszFormat, va_list argList);
+		FTLINLINE HRESULT __cdecl AppendFormat(LPCTSTR lpszFormat, ...);
+		FTLINLINE HRESULT __cdecl AppendFormatV(LPCTSTR lpszFormat, va_list argList);
+
+		//各种支持函数的定义
+#if 0
+		const CFStringFormater& operator=(const CFStringFormater& src);
+		const CFStringFormater& operator=(const TCHAR ch);
+		const CFStringFormater& operator=(LPCTSTR pstr);
+#  ifdef _UNICODE
+		const CFStringFormater& CFStringFormater::operator=(LPCSTR lpStr);
+		const CFStringFormater& CFStringFormater::operator+=(LPCSTR lpStr);
+#  else
+		const CFStringFormater& CFStringFormater::operator=(LPCWSTR lpwStr);
+		const CFStringFormater& CFStringFormater::operator+=(LPCWSTR lpwStr);
+#  endif
+		CFStringFormater operator+(const CFStringFormater& src) const;
+		CFStringFormater operator+(LPCTSTR pstr) const;
+		const CFStringFormater& operator+=(const CFStringFormater& src);
+		const CFStringFormater& operator+=(LPCTSTR pstr);
+		const CFStringFormater& operator+=(const TCHAR ch);
+		TCHAR operator[] (int nIndex) const;
+		bool operator == (LPCTSTR str) const;
+		bool operator != (LPCTSTR str) const;
+		bool operator <= (LPCTSTR str) const;
+		bool operator <  (LPCTSTR str) const;
+		bool operator >= (LPCTSTR str) const;
+		bool operator >  (LPCTSTR str) const;
+#endif 
+
+		FTLINLINE operator LPCTSTR() const
+		{
+			return m_pBuf;
+		}
+		FTLINLINE LPCTSTR GetString() const;
+		FTLINLINE LPTSTR GetString();
+		FTLINLINE LONG  GetStringLength() const;
+		FTLINLINE LONG  GetSize() const;
+		FTLINLINE LPTSTR Detach();
+	protected:
+        TCHAR   m_szInitBuf[DEFAULT_BUFFER_LENGTH];
+		LPTSTR  m_pBuf;
+		DWORD   m_dwTotalBufferLength;
+		const DWORD m_dwMaxBufferLength;
+        FTLINLINE HRESULT __cdecl _InnerFormatV(LPTSTR pszBuf, DWORD dwBufLength, BOOL bAppend, LPCTSTR lpszFormat, va_list argList);
+        FTLINLINE VOID _CheckAndReleaseBuf();
+	};
+
 	class CFConversion
 	{
 	public:
@@ -85,6 +191,9 @@ namespace FTL
 	class CFConvUtil
 	{
 	public:
+		//return True or False
+		FTLINLINE static LPCTSTR GetVariantBoolString(VARIANT_BOOL varBool);
+
 		//ex. pb = {255,15} -> sz = {"FF,0F"} -- TODO: AtlHexDecode/AtlHexEncode
 		FTLINLINE static BOOL HexFromBinary(__in const BYTE* pBufSrc, __in LONG nSrcLen, 
 			__out LPTSTR pBufDest, __inout LONG* pDestCharCount, 

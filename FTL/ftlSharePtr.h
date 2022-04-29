@@ -4,7 +4,7 @@
 
 //#include <ftlThread.h>
 
-//#if defined(WIN32) || defined(WIN64)
+//#if defined(_WIN32) || defined(_WIN64)
     FTLINLINE void FTLInterlockedIncrement(LONG *pLong) //, FTL::CFCriticalSection *)
 	{
 		::InterlockedIncrement(pLong);
@@ -29,7 +29,7 @@
 
 namespace CFSharedPtrDetail
 {
-//#if defined(WIN32) || defined(WIN64)
+//#if defined(_WIN32) || defined(_WIN64)
 //#define FTL_SHARED_PTR_CRITICAL_SECTION(var)
 //#define FTL_SHARED_PTR_CRITICAL_SECTION_PTR(var)	0
 //#else

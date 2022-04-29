@@ -9,14 +9,21 @@
 //if enable this, then can copy full log, but it will use double memory
 #define ENABLE_COPY_FULL_LOG        0
 
+#define INVALID_LINE_INDEX          (UINT)(-1)
+#define INVALID_SEQ_NUMBER          (LONG)(-1)
 //time 现在的单位是 FILETIME(100ns)
 #define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
 #define DEFAULT_LOCAL_MACHINE       "local"
 
+// machine => PID => TID configuration
+#define MPT_TREE_ROOT				"All"
+#define MPT_TREE_ROOT_PATH			"/All/"
+
 //在 filter item 列表中通过右键选择只显示指定 pid/tid 的日志 => 更新 machinePidTid 视图. TODO: 是否有更好的方式?
 #define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID      1001
 #define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID      1002
+#define VIEW_UPDATE_HINT_SELECT_LINE_INDEX         1003
 
 enum ONLY_SELECT_TYPE{
     ostMachine,
@@ -86,11 +93,15 @@ typedef PidTidContainer::iterator             PidTidContainerIter;
 typedef std::map<MACHINE_NAME_TYPE, PidTidContainer>    MachinePidTidContainer;
 typedef MachinePidTidContainer::iterator          MachinePidTidContainerIter;
 
+//用于保存多行的行信息
+typedef std::list<int> LogIndexContainer;
+typedef LogIndexContainer::iterator LogIndexContainerIter;
 
 struct LogItem
 {
     LONG                size;               //LogItem的大小 sizeof
-    LONG                seqNum;             //序列号
+    LONG                lineNum;            //文件中的行号
+    LONG                seqNum;             //序列号(FTL中使用)
     LONG                moduleNameLen;      //模块名字的长度
     LONG                traceInfoLen;       //pszTraceInfo 的长度，目前必须是 pszTraceInfo 字符串长度+1(包括结尾的NULL,不浪费空间)
     LONG                srcFileline;        //在源文件中的行号
@@ -110,7 +121,8 @@ struct LogItem
     LogItem()
     {
         size = 0;
-        seqNum = 0;
+        lineNum = 0;
+        seqNum = INVALID_SEQ_NUMBER;
         moduleNameLen = 0;
         traceInfoLen = 0;
         srcFileline = 0;

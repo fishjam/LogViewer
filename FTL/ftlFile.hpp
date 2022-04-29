@@ -391,7 +391,7 @@ namespace FTL
 				if (bRet)
 				{
 					FTLASSERT(dwReturnLength > 0);
-					CFStringFormater formater(512, 16);
+					CFStringFormater formater;
 					FTLTRACE(TEXT("%s(%d): %s\n"), pDumpParams->pszControlCodeName, pDumpParams->dwIoControlCode,
 						pDumpParams->pDumpProc ? pDumpParams->pDumpProc(formater, memAllocator.GetMemory(), dwReturnLength) : TEXT("<None Fun>"));
 				}

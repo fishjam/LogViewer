@@ -131,7 +131,7 @@ HRESULT CVsIdeHandler::SetActiveIDE(IUnknown* pUnknown)
 HRESULT CVsIdeHandler::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
     HRESULT hr = E_FAIL;
-    FTLTRACE(TEXT("now will try to locate source code at %s(%d)\n"),
+    FTLTRACE(TEXT("now will try to locate source code at %s(%d)"),
         pszFileName, line);
 
     if (m_pActiveIEnvDTE)
@@ -173,7 +173,14 @@ HRESULT CVsIdeHandler::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
         COM_VERIFY(m_pActiveIEnvDTE->get_MainWindow(&pMainWindow));
         if (SUCCEEDED(hr))
         {
-            COM_VERIFY(pMainWindow->Activate());
+			LONG lWndMain = 0;
+			COM_VERIFY(pMainWindow->Activate());
+			COM_VERIFY(pMainWindow->get_HWnd(&lWndMain));
+			if (SUCCEEDED(hr))
+			{
+				FTLTRACE(TEXT("main Hwand=%lld"), lWndMain);
+				FTL::CFWinUtil::ActiveAndForegroundWindow(reinterpret_cast<HWND>(lWndMain));
+			}
         }
     }
     return hr;

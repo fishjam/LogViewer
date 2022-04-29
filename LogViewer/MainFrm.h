@@ -62,6 +62,9 @@ public:
     afx_msg void OnDropFiles(HDROP hDropInfo);
     afx_msg void OnSettingConfigIniChange(UINT nID);
     afx_msg void OnCodePageChange(UINT nID);
+    afx_msg BOOL OnToolsCheckMissingSeqNumber(UINT nID);
+    afx_msg BOOL OnToolsCheckReverseSeqNumber(UINT nID);
+    afx_msg void OnToolsStatistics(UINT nID);
 };
 
 

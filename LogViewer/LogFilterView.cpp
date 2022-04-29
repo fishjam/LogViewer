@@ -12,11 +12,12 @@ IMPLEMENT_DYNCREATE(CLogFilterView, CFormView)
 CLogFilterView::CLogFilterView()
 	: CFormView(CLogFilterView::IDD)
 {
-    m_nStartSeqNumber = 0;
-    m_nEndSeqNumber = INT_MAX;
+    m_nStartLineNumber = 0;
+    m_nEndLineNumber = INT_MAX;
     m_lastFilterStringChangeTick = 0;
     m_bFilterStringChanged = FALSE;
     m_UpdateFilterStringTimerID = 0;
+	m_bInited = FALSE;
 }
 
 CLogFilterView::~CLogFilterView()
@@ -26,8 +27,8 @@ CLogFilterView::~CLogFilterView()
 void CLogFilterView::DoDataExchange(CDataExchange* pDX)
 {
     CFormView::DoDataExchange(pDX);
-    DDX_Text(pDX, IDC_EDIT_START_SEQ_NUMBER, m_nStartSeqNumber);
-    DDX_Text(pDX, IDC_EDIT_END_SEQ_NUMBER, m_nEndSeqNumber);
+    DDX_Text(pDX, IDC_EDIT_START_LINE_NUMBER, m_nStartLineNumber);
+    DDX_Text(pDX, IDC_EDIT_END_LINE_NUMBER, m_nEndLineNumber);
     DDX_Text(pDX, IDC_EDIT_FILTER_STRING, m_strFilterString);
     DDX_Text(pDX, IDC_EDIT_FULL_TRACEINFO, m_strFullTraceInfo);
 
@@ -37,8 +38,8 @@ void CLogFilterView::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CLogFilterView, CFormView)
     ON_WM_SIZE()
     ON_CONTROL_RANGE(BN_CLICKED,IDC_CHECK_DETAIL,IDC_CHECK_ERROR,&CLogFilterView::OnBnClickedCheckTraceLevel)
-    ON_EN_CHANGE(IDC_EDIT_START_SEQ_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
-    ON_EN_CHANGE(IDC_EDIT_END_SEQ_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
+    ON_EN_CHANGE(IDC_EDIT_START_LINE_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
+    ON_EN_CHANGE(IDC_EDIT_END_LINE_NUMBER, &CLogFilterView::OnEnChangeEditFilter)
     ON_EN_CHANGE(IDC_EDIT_FILTER_STRING, &CLogFilterView::OnEnChangeEditFilter)
     ON_CBN_SELCHANGE(IDC_COMBO_FILTER, &CLogFilterView::OnComboboxFilterChange)
     ON_WM_TIMER()
@@ -64,14 +65,20 @@ void CLogFilterView::Dump(CDumpContext& dc) const
 
 void CLogFilterView::OnInitialUpdate()
 {
-    CFormView::OnInitialUpdate();
-    m_UpdateFilterStringTimerID = SetTimer(1,10,NULL);
-    for (UINT nId = IDC_CHECK_DETAIL; nId <= IDC_CHECK_ERROR; nId++)
-    {
-        CheckDlgButton(nId,BST_CHECKED);
-    }
-	m_comboBoxFilter.SetCurSel(ftAll);
-    this->InitAutoSizeInfo();
+	FTLTRACE(TEXT("Enter OnInitialUpdate"));
+
+	if (FALSE == m_bInited)
+	{
+		CFormView::OnInitialUpdate();
+		m_UpdateFilterStringTimerID = SetTimer(1, 10, NULL);
+		for (UINT nId = IDC_CHECK_DETAIL; nId <= IDC_CHECK_ERROR; nId++)
+		{
+			CheckDlgButton(nId, BST_CHECKED);
+		}
+		m_comboBoxFilter.SetCurSel(ftAll);
+		this->InitAutoSizeInfo();
+		m_bInited = TRUE;
+	}
 }
 
 void CLogFilterView::OnSize(UINT nType, int cx, int cy)
@@ -108,16 +115,6 @@ void CLogFilterView::OnUpdate(CView* pSender, LPARAM /*lHint*/, CObject* /*pHint
         CLogViewerDoc *pDoc = GetDocument();
 		m_strFullTraceInfo = pDoc->m_FTLogManager.getActiveItemTraceInfo();
 		UpdateData(FALSE);
-    //    LV_ITEM item = {0};
-    //    for (int itemIndex = 0; itemIndex < m_AllLogItemsList.GetItemCount(); itemIndex++)
-    //    {
-    //        LPLogItem pLogItem = (LPLogItem)m_AllLogItemsList.GetItemData(itemIndex);
-    //        ASSERT(pLogItem);
-    //    }
-    //}
-    //else
-    //{
-    //    FTLASSERT(FALSE);
     }
     
 }
@@ -160,10 +157,10 @@ void CLogFilterView::OnTimer(UINT_PTR nIDEvent)
 
             API_VERIFY(UpdateData(TRUE));
             CLogViewerDoc* pDoc = GetDocument();
-            pDoc->m_FTLogManager.SetFilterSeqNumber(m_nStartSeqNumber, m_nEndSeqNumber);
+            pDoc->m_FTLogManager.SetFilterLineNumber(m_nStartLineNumber, m_nEndLineNumber);
             pDoc->m_FTLogManager.SetLogInfoFilterString(m_strFilterString,
                 (FilterType)m_comboBoxFilter.GetCurSel());
-            pDoc->UpdateAllViews(this);
+            pDoc->UpdateAllViews(this, VIEW_UPDATE_HINT_SELECT_LINE_INDEX, NULL);
         }
     }
     __super::OnTimer(nIDEvent);

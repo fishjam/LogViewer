@@ -49,9 +49,10 @@ protected:
 public:
     afx_msg void OnEnChangeEditFilter();
 	afx_msg void OnComboboxFilterChange();
+	BOOL m_bInited;
 	CComboBox m_comboBoxFilter;
-    LONG    m_nStartSeqNumber;
-    LONG    m_nEndSeqNumber;
+    LONG    m_nStartLineNumber;
+    LONG    m_nEndLineNumber;
     CString m_strFilterString;
 	CString m_strFullTraceInfo;
     afx_msg void OnTimer(UINT_PTR nIDEvent);

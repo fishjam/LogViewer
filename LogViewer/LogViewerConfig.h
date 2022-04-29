@@ -13,6 +13,9 @@
 #define KEY_DISPLAY_TIMEFORMAT  TEXT("DISPLAY_TIME_FORMAT")
 #define KEY_SOURCE_FILE_EXTS    TEXT("SOURCE_FILES_EXT")
 
+#define MAX_LINE_LENGTH         TEXT("MAX_LINE_LENGTH")
+
+#define KEY_ITEM_SEQNUM         TEXT("ITEM_SEQNUM")
 #define KEY_ITEM_TIME           TEXT("ITEM_TIME")
 #define KEY_ITEM_LEVEL          TEXT("ITEM_LEVEL")
 #define KEY_ITEM_MACHINE        TEXT("ITEM_MACHINE")
@@ -39,6 +42,8 @@ enum DateTimeType{
     dttTime
 };
 
+typedef std::set<std::string> LevelsTextContainer;
+
 class CLogViewerConfig
 {
 public:
@@ -61,6 +66,9 @@ public:
     CString         m_strDisplayTimeFormat;
     DateTimeType    m_dateTimeType;
 
+    INT m_nMaxLineLength;        //每行的最大长度,超过的话，就裁剪
+
+    INT m_nItemSeqNum;
     INT m_nItemTime;
     INT m_nItemLevel;
     INT m_nItemMachine;
@@ -72,8 +80,9 @@ public:
     INT m_nItemLine;
     INT m_nItemLog;
 
-    //二次分析时中的源文件路径
+    //二次分析时中的源文件路径(针对 mybox 这种程序进行的特化)
     INT m_nItemSrcFileEx;
 
-    std::string m_strLevelsText[FTL::tlEnd];
+    //支持多个用 "|" 隔开的等级字符串
+    LevelsTextContainer m_strLevelsText[FTL::tlEnd];
 };

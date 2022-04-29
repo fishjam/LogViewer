@@ -98,11 +98,11 @@ void CMachinePidTidTreeView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHi
         if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID == lHint)
         {
             pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = "/" + pFilterIdType->machine + "/" + pFilterIdType->pid;
+            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + "/" + pFilterIdType->pid;
         }
         else  if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID == lHint) {
             pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = "/" + pFilterIdType->machine + "/" + pFilterIdType->pid + "/" + pFilterIdType->tid;
+            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + "/" + pFilterIdType->pid + "/" + pFilterIdType->tid;
         }
         if (NULL == pFilterIdType)
         {
@@ -125,13 +125,15 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
     tvInsertStruct.itemex.mask = TVIF_TEXT|TVIF_STATE;
     tvInsertStruct.itemex.stateMask = TVIS_STATEIMAGEMASK;
     tvInsertStruct.itemex.state = INDEXTOSTATEIMAGEMASK((fCheck ? 2 : 1));
+    tvInsertStruct.itemex.pszText = TEXT(MPT_TREE_ROOT);
 
+    HTREEITEM hItemAll = treeCtrl.InsertItem(&tvInsertStruct);
 
     for (MachinePidTidContainerIter iterMachine = allMachinePidTidInfos.begin();
         iterMachine != allMachinePidTidInfos.end();
         ++iterMachine){
             FTL::CFConversion conv;
-            tvInsertStruct.hParent = TVI_ROOT;
+            tvInsertStruct.hParent = hItemAll;
             tvInsertStruct.itemex.pszText = conv.UTF8_TO_TCHAR(iterMachine->first.c_str());
             HTREEITEM hItemMachine = treeCtrl.InsertItem(&tvInsertStruct);
 
@@ -160,6 +162,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
                 }
             }
     }
+	treeCtrl.Expand(TVI_ROOT, TVE_EXPAND);
 }
 void CMachinePidTidTreeView::OnNMTVStateImageChanging(NMHDR *pNMHDR, LRESULT *pResult)
 {
@@ -207,9 +210,11 @@ void CMachinePidTidTreeView::SetChildCheck(CTreeCtrl& treeCtrl,  HTREEITEM hItem
     } else {
         //最底层的 Tid 节点
         ID_INFOS* pIdInfos = (ID_INFOS*)treeCtrl.GetItemData(hItem);
-        pIdInfos->bChecked = bCheck;
+        if (pIdInfos)
+        {
+            pIdInfos->bChecked = bCheck;
+        }
     }
-
 }
 
 void CMachinePidTidTreeView::SetParentCheck(CTreeCtrl& treeCtrl, HTREEITEM hItem, BOOL bCheck )

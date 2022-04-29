@@ -89,8 +89,10 @@ BOOL CLogViewerApp::InitInstance()
         RUNTIME_CLASS(CLogViewerDoc),
         RUNTIME_CLASS(CMainFrame),       // main SDI frame window
         RUNTIME_CLASS(CMachinePidTidTreeView));
-    if (!pDocTemplate)
-        return FALSE;
+	if (!pDocTemplate) {
+		FTLTRACE(TEXT("leave %s because of pDocTemplate is NULL"), TEXT(__FUNCTION__));
+		return FALSE;
+	}
     AddDocTemplate(pDocTemplate);
 
 
@@ -105,8 +107,11 @@ BOOL CLogViewerApp::InitInstance()
 
     // Dispatch commands specified on the command line.  Will return FALSE if
     // app was launched with /RegServer, /Register, /Unregserver or /Unregister.
-    if (!ProcessShellCommand(cmdInfo))
-        return FALSE;
+	if (!ProcessShellCommand(cmdInfo))
+	{
+		FTLTRACE(TEXT("leave %s because of ProcessShellCommand fail"), TEXT(__FUNCTION__));
+		return FALSE;
+	}
 
     // The one and only window has been initialized, so show and update it
     m_pMainWnd->ShowWindow(SW_SHOW);
@@ -115,6 +120,8 @@ BOOL CLogViewerApp::InitInstance()
     //  In an SDI app, this should occur after ProcessShellCommand
     // Enable drag/drop open
     m_pMainWnd->DragAcceptFiles();
+
+	FTLTRACE(TEXT("leave %s"), TEXT(__FUNCTION__));
     return TRUE;
 }
 

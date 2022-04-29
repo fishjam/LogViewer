@@ -10,7 +10,8 @@
 
 enum LogItemContentType  //用于排序
 {
-    type_Sequence = 0,
+    type_LineNum = 0,
+    type_SeqNum,
     type_Machine,
     type_ProcessId,
     type_ThreadId,
@@ -19,7 +20,7 @@ enum LogItemContentType  //用于排序
     type_TraceLevel,
     type_ModuleName,
     type_FunName,
-    type_FileName,
+    type_FilePos,
     type_TraceInfo,
 
     type_SortCount
@@ -36,11 +37,19 @@ struct SortContent
     BOOL                bSortAscending;
 };
 
+struct LogOccurrenceInfo {
+    CString     strLog;
+    LONG        count;
+};
+
 struct LogItemFilter;
 
 typedef std::list<CString>         SameNameFilePathList;
 typedef std::shared_ptr<SameNameFilePathList>   SameNameFilePathListPtr;
 typedef std::map<CString, SameNameFilePathListPtr, CAtlStringCompareI> FileName2FullPathMap;
+
+//统计每一种日志出现的次数
+typedef std::list<LogOccurrenceInfo> LogStatisticsInfos;
 
 class CLogManager: public IFileFindCallback
 {
@@ -52,6 +61,7 @@ public:
     CLogManager(void);
     ~CLogManager(void);
     //LONG GenerateLog(LPCTSTR pszFilePath, LONG logCount);
+    CString GetFirstLogFilePath();
     BOOL SetLogFiles(const CStringArray &logFilePaths);
     BOOL ClearAllLogItems();
     BOOL ReloadLogItems();
@@ -71,7 +81,8 @@ public:
     BOOL TryReparseRealFileName(CString& strFileName);
 
     BOOL DeleteItems(std::set<LONG> delItems);
-    void setActiveItemIndex(LONG index);
+    void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
+    LONG GetActiveLineIndex();
     CString getActiveItemTraceInfo();
 
     MachinePidTidContainer& GetAllMachinePidTidInfos(){
@@ -82,7 +93,7 @@ public:
     BOOL SortDisplayItem(LogItemContentType SortContentType, BOOL bSortAscending);
     SortContent GetFirstSortContent() const;
 
-    BOOL IsItemMatchSeqNumber(LONG seqNumber);
+    BOOL IsItemMatchLineNumber(LONG lineNumber);
     //是否选中 -- 进行过滤
     BOOL IsItemIdChecked(const LogItemPointer& pItem);
 
@@ -92,7 +103,7 @@ public:
 
     BOOL DoFilterLogItems();
     void SetCodepage(UINT codepage){ m_codePage = codepage; }
-    BOOL SetFilterSeqNumber(LONG nStartSeqNumber, LONG nEndSeqNumber);
+    BOOL SetFilterLineNumber(LONG nStartLineNumber, LONG nEndLineNumber);
     BOOL SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType);
     CLogViewerConfig    m_logConfig;
 
@@ -104,6 +115,14 @@ public:
 	VOID ClearUserFullPathCache();
 	VOID SetFullPathForUserCache(const CString& strFileLineCache, const CString& strFullPathUserSelect);
 	CString GetFullPathFromUserCache(const CString& strFileLineCache);
+
+
+    //当 SeqNumber 不为 -1 时，检查是否有遗漏的(用于检查 ftl log 是否有丢失的情况)
+    //  outMissingLineList 和 outRevertLineList 保存的是缺失 SeqNumber 时的行(从而可以 Goto)
+    LONG CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogIndexContainer* pOutReverseLineList, LONG maxCount = 1);
+
+    //统计出现次数最多的 nTop 个日志
+    LONG GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInfo, LogItemContentType itemType = type_FilePos);
 protected:
     typedef std::vector<LogItemPointer>     LogItemArrayType;
     typedef LogItemArrayType::iterator      LogItemArrayIterator;
@@ -135,11 +154,12 @@ protected:
     FilterType                  m_filterType;
     //BOOL                      m_isIncludeText;
     LONG                        m_fileCount;
-    LONG                        m_nStartSeqNumber;
-    LONG                        m_nEndSeqNumber;
+    LONG                        m_nStartLineNumber;
+    LONG                        m_nEndLineNumber;
     LONG                        m_nSelectedProcessCount;
     LONG                        m_nSelectedThreadCount;
-    LONG                        m_activeItemIndex;
+    LONG                        m_activeLineIndex;
+    LONG                        m_activeDisplayIndex;
     //增加了按照多个条件进行排序 -- 在有多个线程且对线程ID排序时，不这样做，各个日志可能乱序
     //是否应该在UI上增加标示？
     SortContent                 m_SortContents[type_SortCount];
@@ -155,7 +175,7 @@ protected:
     BOOL ReadTraceLogFile(LPCTSTR pszFilePath);
 
     LogItemPointer ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem);
-    BOOL _CalcThreadElpaseTime(LogItemArrayType& logItems);
+    BOOL _CalcThreadElpaseTime(LogItemArrayType& logItems, LONG& outProcessCount, LONG& outThreadCount);
     int _ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage);
     LPCTSTR _CopyItemInfo(LPCTSTR pszSource);
     void _AppendLogItem(LogItemPointer& pLogItem);

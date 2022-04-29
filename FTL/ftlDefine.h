@@ -44,6 +44,15 @@
 #define FTL_DEFINE_H
 #pragma once
 
+#define IS_VS_2010_HIGHER	(_MSC_VER >= 1600)
+#define IS_VS_2012_HIGHER	(_MSC_VER >= 1700)
+#define IS_VS_2013_HIGHER	(_MSC_VER >= 1800)
+#define IS_VS_2015_HIGHER	(_MSC_VER >= 1900)
+#define IS_VS_2017_HIGHER   (_MSC_VER >= 1916)
+
+//TODO: 从什么时候开始支持 C++ 11? 是否有版本要求
+#define IS_SUPPORT_CPP11    (_MSC_VER >= 1900)
+
 namespace FTL
 {
     //使用模版的export关键字，将声明和实现分开 -- 但目前VS2003~VS2008都不支持 export 关键字
@@ -69,8 +78,10 @@ namespace FTL
     #endif //QQUOTE
 
     #define MAKE_TYPE_DESC(type) { type, _T(#type) }  
-
+	
+	//#define		__FILENAME__ (_tcsrchr(TEXT(__FILE__), TEXT('\\')) ? _tcsrchr(TEXT(__FILE__), TEXT('\\')) + 1 : TEXT(__FILE__))
 	#define     __FILE__LINE__  TEXT(__FILE__) TEXT("(") TEXT(QQUOTE(__LINE__)) TEXT(") :")
+	//#define     __FILE__LINE_ANSI__  __FILENAME__ "(" QQUOTE(__LINE__) ") :"
 
     /**********************************************************************************************
     * 宏展开是按字符顺序扫描的
@@ -99,8 +110,34 @@ namespace FTL
     //回车符(13,D)
     #define CHAR_CR  '\r'
 
+    #define FTL_MIN(a,b)                (((a) < (b)) ? (a) : (b))
+    #define FTL_MAX(a,b)                (((a) > (b)) ? (a) : (b))
+        //如果x在 [a,b] 之间，则是x, 否则会是边沿值
+    #define FTL_CLAMP(x, a, b)			(FTL_MIN((b), FTL_MAX((a), (x))))
+    #define FTL_ABS(a)		            (((a) < 0) ? -(a) : (a))
+    #define FTL_SIGN(a)		            (((a) > 0) ? 1 : (((a) < 0) ? -1 : 0))
+    #define FTL_INRANGE(low, Num, High) (((low) <= (Num)) && ((Num) <= (High)))
+
     //注意，需要区分Dos和Unix
     #define LINE_SEP    CR LF
+
+#if 1
+    //TODO: 适合于 FTL 中增加回车换行的用法
+#  define LOG_LINE_SEP_W    L"\r\n"
+#  define LOG_LINE_SEP_A    "\r\n"
+#else
+    //TODO: 适合于 ATLTRACE 一类的用法(需要自己增加)
+#  define LOG_LINE_SEP_W    L""
+#  define LOG_LINE_SEP_A    ""
+#endif
+
+
+	//禁止拷贝构造和赋值操作符
+	#define DISABLE_COPY_AND_ASSIGNMENT(className)  \
+		private:\
+		 className(const className& ref);\
+			className& operator = (const className& ref)
+
 
     //定义来查找一个数组中的 past-the-end 位置，使用方式:
     //  std::find(intArray, ARRAY_PAST_THE_END(intArray), 10);
@@ -122,17 +159,55 @@ namespace FTL
 		else if( f < o.f ) { return false; }
 
 	#ifndef MAKELONGLONG
-		#define MAKELONGLONG(a, b)	((LONGLONG)(((((LONGLONG)(a)) & 0xFFFFFFFF)) | (((((LONGLONG)(b)) & 0xFFFFFFFF)) << 32)))
+		#define MAKELONGLONG(h, l)	( (((((LONGLONG)(h)) & 0xFFFFFFFF)) << 32)) | (LONGLONG)(((((LONGLONG)(l)) & 0xFFFFFFFF)))
 		#define HILONG(a) (LONG)	((((LONGLONG)(a)) & 0xFFFFFFFF00000000) >> 32)
 		#define LOLONG(a) (LONG)	(((LONGLONG)(a)) & 0xFFFFFFFF)
 	#endif 
 
-	enum RecursiveWay			//递归算法的类型
+    #define GUID_LENGTH_WITHOUT_BRACKETS         36
+    #define GUID_LENGTH_WITH_BRACKETS            38
+    #define GUID_MAX_LENGTH                      40
+
+    //指针长度对齐(32位为4, 64位为8)
+    #define BUFFER_ALLIGNMENT                   (sizeof(void*))
+    #define DEFAULT_BUFFER_LENGTH               (256)
+    #define MAX_BUFFER_LENGTH                   (64 * 1024)
+	
+    enum RecursiveWay			//递归算法的类型
 	{
 		rwNone,					//不递归
 		rwDepthFirst,			//深度优先
 		rwBreadthFirst,			//广度优先
 	};
+
+	#ifndef SAFE_DELETE
+	#  define SAFE_DELETE(p) if( NULL != (p) ){ delete (p); (p) = NULL; }
+	#endif
+
+	#ifndef SAFE_DELETE_ARRAY
+	#  define SAFE_DELETE_ARRAY(p) if( NULL != (p) ){ delete [] (p); (p) = NULL; }
+	#endif
+
+	#ifndef SAFE_FREE
+	#  define SAFE_FREE(p)   if(NULL != (p)) { free((p)); (p) = NULL;}
+	#endif
+
+	#ifndef SAFE_LOCAL_FREE
+	#  define SAFE_LOCAL_FREE(p) if(NULL != (p)) { ::LocalFree((p)); (p) = NULL; }
+	#endif
+
+	#ifndef SAFE_HEAP_FREE
+	#  define SAFE_HEAP_FREE(p) if(NULL != (p)) { ::HeapFree(GetProcessHeap(),0,(p)); (p) = NULL; }
+	#endif
+
+	#ifndef SAFE_FREE_BSTR
+	#  define SAFE_FREE_BSTR(s) if(NULL != (s)){ ::SysFreeString((s)); (s) = NULL; }
+	#endif
+
+	#ifndef SAFE_ILFREE
+	#  define SAFE_ILFREE(p) if(NULL != (p)){ ::ILFree((p)); (p) = NULL; }
+	#endif
+
 }
 
 

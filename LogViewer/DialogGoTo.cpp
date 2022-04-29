@@ -11,9 +11,9 @@
 
 IMPLEMENT_DYNAMIC(CDialogGoTo, CDialog)
 
-CDialogGoTo::CDialogGoTo(UINT nInitGotoSeqNum, CWnd* pParent /*=NULL*/)
+CDialogGoTo::CDialogGoTo(UINT nInitGotoLineNum, CWnd* pParent /*=NULL*/)
 	: CDialog(IDD_DIALOG_GOTO, pParent)
-    , m_nGotoSeqNumber(nInitGotoSeqNum)
+    , m_nGotoLineNumber(nInitGotoLineNum)
 {
 }
 
@@ -24,8 +24,8 @@ CDialogGoTo::~CDialogGoTo()
 void CDialogGoTo::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-    DDX_Text(pDX, IDC_EDIT_GOTO_SEQNUM, m_nGotoSeqNumber);
-    DDX_Control(pDX, IDC_EDIT_GOTO_SEQNUM, m_editGotoSeqNumber);
+    DDX_Text(pDX, IDC_EDIT_GOTO_LINENUM, m_nGotoLineNumber);
+    DDX_Control(pDX, IDC_EDIT_GOTO_LINENUM, m_editGotoLineNumber);
 }
 
 
@@ -39,8 +39,8 @@ BOOL CDialogGoTo::OnInitDialog()
 {
     UpdateData(FALSE);
 
-    m_editGotoSeqNumber.SetFocus();
-    m_editGotoSeqNumber.SetSel(0, -1);
+    m_editGotoLineNumber.SetFocus();
+    m_editGotoLineNumber.SetSel(0, -1);
     
     return FALSE; // return TRUE unless you set the focus to a control
 }

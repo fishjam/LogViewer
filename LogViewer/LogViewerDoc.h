@@ -10,9 +10,12 @@
 #include <ftlSystem.h>
 #include "../LogFilterBase.h"
 
-#define SECTION_CONFIG      TEXT("Config")
-#define ENTRY_ACTIVE_INI    TEXT("ActiveIni")
-#define ENTRY_SOURCE_DIR    TEXT("SourceDir")
+#define SECTION_CONFIG          TEXT("Config")
+#define ENTRY_ACTIVE_INI        TEXT("ActiveIni")
+#define ENTRY_SOURCE_DIR        TEXT("SourceDir")
+#define ENTRY_SOURCES_HISTORY   TEXT("SourcesHistory")
+
+#define SOURCES_HISTORY_COUNT   5
 
 class CLogViewerDoc : public CDocument
 {

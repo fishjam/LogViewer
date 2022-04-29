@@ -131,11 +131,18 @@ BOOL CLogViewerDoc::OnOpenDocument(LPCTSTR lpszPathName){
 
 void CLogViewerDoc::OnFileOpen()
 {
+    BOOL bRet = FALSE;
     CString strFilter;
     GetFileFilterString(strFilter);
 
-    CFileDialog dlgFile(TRUE, NULL, NULL, OFN_READONLY| OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT,
+    //获取当前打开的文件目录,以其作为初始目录,从而方便选相关文件 -- 实测总是不能正确选择初始目录, 为什么?
+    CString strCurLogFilePath = m_FTLogManager.GetFirstLogFilePath();
+
+    //strCurLogFilePath.Replace(TEXT("\\"), TEXT("/"));
+
+    CFileDialog dlgFile(TRUE, NULL, strCurLogFilePath, OFN_READONLY| OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT,
         strFilter, NULL, 0);
+    //dlgFile.m_ofn.lpstrInitialDir = strCurLogFilePath;  //设置了也无效
 
     CString title;
     VERIFY(title.LoadString(ID_FILE_OPEN));

@@ -57,6 +57,9 @@
     <ClCompile Include="DialogSameFilesList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DialogSourceHistory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\LogFilterBase.h">
@@ -108,6 +111,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DialogSameFilesList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DialogSourceHistory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

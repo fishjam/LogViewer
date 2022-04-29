@@ -16,11 +16,17 @@ namespace FTL
 }//namespace FTL
 
 #include <WinIoctl.h>
-//#include "ftlsystem.h"
+#include "ftlsystem.h"
 #include "ftlThread.h"
 
 namespace FTL
 {
+    //注意: Win10 1607 以后的系统可以打开长路径支持. TODO:改注册表,但具体的位置?
+    //  似乎是 计算机\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem 下的 LongPathsEnabled
+
+    #define LONG_PATH_PREFIX            TEXT("\\\\?\\")
+    #define LONG_PATH_PREFIX_LENGTH     4
+
 	//BYTE -> KB -> MB -> GB -> TB -> PB -> EB -> ZB -> YB
     #define BYTES_PER_KILOBYTE      (1024)
     #define BYTES_PER_MEGABYTE      (BYTES_PER_KILOBYTE * 1000)
@@ -39,6 +45,9 @@ namespace FTL
     *   TODO: ControlSet001\Control\Session Manager\ 下也有, 是链接吗?
     *   MoveFileEx(cTempFileName, NULL, MOVEFILE_DELAY_UNTIL_REBOOT)
     *   流程:系统重启->Autochk检查->移动指定文件->
+    * 2.FILE_FLAG_BACKUP_SEMANTICS 是什么意思? Reparse Point 和 文件监控等时 都需要
+    *   指示系统为文件的打开或创建执行一个备份或恢复操作,系统保证调用进程忽略文件的安全选项,也可用于获取目录句柄
+    * 3.系统提供了 RemoveDirectory 方法,可以删除整个目录. 同步异步?进度? 
 	*
 	* CShellFileOpenDialog -- 可以显示手机等上面的文件
     *
@@ -69,6 +78,7 @@ namespace FTL
 		tfeError = -1,
 		tfeUnknown = 0,
 
+		tfeAnsi,
 		tfeUTF8,					//0xEF BB BF
 		tfeUnicode,					//0xFF FE
 		tfeUnicodeBigEndian,		//0xFE FF
@@ -114,6 +124,7 @@ namespace FTL
     *   它传回ERROR_IO_PENDING，那意味着“overlapped I/O请求”被放进队列中等待执行
     * 
     * Console 文件
+    *   SetConsoleCtrlHandler  <== 控制台程序中 Ctrl+C( CTRL_C_EVENT ) 的处理
     *   m_hOutput = GetStdHandle (STD_OUTPUT_HANDLE);
     *   if (m_hOutput == INVALID_HANDLE_VALUE) {
     *     API_VERIFY(AllocConsole ());

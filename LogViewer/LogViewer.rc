@@ -13,7 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Chinese (P.R.C.) resources
+// Chinese (Simplified, PRC) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 #ifdef _WIN32
@@ -66,7 +66,9 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\LogViewer.ico"
+
 IDR_FAST_TRACE_LOG_VIEW_TYPE ICON                    "res\\LogViewerDoc.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -75,12 +77,13 @@ IDR_FAST_TRACE_LOG_VIEW_TYPE ICON                    "res\\LogViewerDoc.ico"
 
 IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Toolbar
 //
 
-IDR_MAINFRAME TOOLBAR  16, 15
+IDR_MAINFRAME TOOLBAR 16, 15
 BEGIN
     BUTTON      ID_FILE_NEW
     BUTTON      ID_FILE_OPEN
@@ -101,7 +104,7 @@ END
 // Menu
 //
 
-IDR_MAINFRAME MENU 
+IDR_MAINFRAME MENU
 BEGIN
     POPUP "&File"
     BEGIN
@@ -136,6 +139,16 @@ BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
     END
+    POPUP "Tools"
+    BEGIN
+        MENUITEM "Check Missing Seq Num",       ID_TOOLS_CHECK_MISSING_SEQ_NUM
+        MENUITEM "Check Reverse Seq Num",       ID_TOOLS_CHECK_REVERSE_SEQ_NUM
+        POPUP "Statistics"
+        BEGIN
+            MENUITEM "FilePos",                     ID_TOOLS_STATISTICS_FILEPOS
+            MENUITEM "TraceInfo",                   ID_TOOLS_STATISTICS_TRACEINFO
+        END
+    END
     POPUP "CodePage"
     BEGIN
         MENUITEM "UTF_8",                       ID_CODE_PAGE_UTF8
@@ -149,7 +162,7 @@ BEGIN
     END
 END
 
-IDR_MENU_DETAIL MENU 
+IDR_MENU_DETAIL MENU
 BEGIN
     POPUP "Tools"
     BEGIN
@@ -171,7 +184,7 @@ END
 // Accelerator
 //
 
-IDR_MAINFRAME ACCELERATORS 
+IDR_MAINFRAME ACCELERATORS
 BEGIN
     "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
@@ -221,8 +234,8 @@ BEGIN
     EDITTEXT        IDC_EDIT_FILTER_STRING,305,16,211,15,ES_AUTOHSCROLL
     COMBOBOX        IDC_COMBO_FILTER,274,17,26,12,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     GROUPBOX        "Seq Number",IDC_STATIC,9,7,98,27
-    EDITTEXT        IDC_EDIT_START_SEQ_NUMBER,14,17,31,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_END_SEQ_NUMBER,59,17,46,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_START_LINE_NUMBER,14,17,31,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_END_LINE_NUMBER,59,17,46,14,ES_AUTOHSCROLL
     LTEXT           "~",IDC_STATIC,49,21,8,8
 END
 
@@ -243,8 +256,8 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,89,57,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,161,57,50,14
-    EDITTEXT        IDC_EDIT_GOTO_SEQNUM,70,25,173,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "SeqNum:",IDC_STATIC,19,28,30,8
+    EDITTEXT        IDC_EDIT_GOTO_LINENUM,70,25,173,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Line Num:",IDC_STATIC,19,28,30,8
 END
 
 IDD_DIALOG_SAME_FILE_LISTS DIALOGEX 0, 0, 497, 201
@@ -255,6 +268,17 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,371,180,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,440,180,50,14
     LISTBOX         IDC_LIST_SAME_FILES,7,7,483,168,LBS_SORT | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_DIALOG_SOURCE_HISTORY DIALOGEX 0, 0, 335, 66
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Source Path History"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,218,45,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,278,45,50,14
+    COMBOBOX        IDC_COMBO_SRC_PATH_HISTORY,7,21,294,128,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "...",IDC_BTN_CHOOSE_SRC_PATH,309,19,19,14
 END
 
 
@@ -303,7 +327,7 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
@@ -344,6 +368,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 194
     END
+
+    IDD_DIALOG_SOURCE_HISTORY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 328
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 59
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -380,29 +412,34 @@ BEGIN
     0
 END
 
+IDD_DIALOG_SOURCE_HISTORY AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table
 //
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDP_OLE_INIT_FAILED     "OLE initialization failed.  Make sure that the OLE libraries are the correct version."
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDR_MAINFRAME           "LogViewer\n\nFastTraceLogVie\nLogViewer Files (*.FTL)\n.FTL\nLogViewer.Document\nLogViewer.Document"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     AFX_IDS_APP_TITLE       "LogViewer"
     AFX_IDS_IDLEMESSAGE     "Ready"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_INDICATOR_EXT        "EXT"
     ID_INDICATOR_CAPS       "CAP"
@@ -414,10 +451,10 @@ BEGIN
     ID_INDICATOR_PROCESS_COUNT "Process:%d"
     ID_INDICATOR_THREAD_COUNT "Thread:%d"
     ID_INDICATOR_LOGITEM_COUNT "LogItem:%d        "
-    ID_INDICATOR_SELECTED_LOGITEM "Selected:%d/%d"
+    ID_INDICATOR_SELECTED_LOGITEM "Selected:%d/%d      "
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_FILE_NEW             "Create a new document\nNew"
     ID_FILE_OPEN            "Open an existing document\nOpen"
@@ -430,13 +467,13 @@ BEGIN
     ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
     ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_FILE_MRU_FILE1       "Open this document"
     ID_FILE_MRU_FILE2       "Open this document"
@@ -456,18 +493,18 @@ BEGIN
     ID_FILE_MRU_FILE16      "Open this document"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
     ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_EDIT_CLEAR           "Erase the selection\nErase"
     ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
@@ -482,13 +519,13 @@ BEGIN
     ID_EDIT_REDO            "Redo the previously undone action\nRedo"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle ToolBar"
     ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     AFX_IDS_SCSIZE          "Change the window size"
     AFX_IDS_SCMOVE          "Change the window position"
@@ -499,18 +536,18 @@ BEGIN
     AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     AFX_IDS_SCRESTORE       "Restore the window to normal size"
     AFX_IDS_SCTASKLIST      "Activate Task List"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
 END
 
-#endif    // Chinese (P.R.C.) resources
+#endif    // Chinese (Simplified, PRC) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

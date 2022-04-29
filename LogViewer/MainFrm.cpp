@@ -24,8 +24,12 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_UPDATE_COMMAND_UI(ID_INDICATOR_LOGITEM_COUNT, &CMainFrame::OnUpdateIndicatorLogItemCount)
     ON_WM_DROPFILES()
 
+    ON_COMMAND_EX(ID_TOOLS_CHECK_MISSING_SEQ_NUM, &CMainFrame::OnToolsCheckMissingSeqNumber)
+    ON_COMMAND_EX(ID_TOOLS_CHECK_REVERSE_SEQ_NUM, &CMainFrame::OnToolsCheckReverseSeqNumber)
+
     ON_COMMAND_RANGE(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END, &CMainFrame::OnSettingConfigIniChange)
     ON_COMMAND_RANGE(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, &CMainFrame::OnCodePageChange)
+    ON_COMMAND_RANGE(ID_TOOLS_STATISTICS_FILEPOS, ID_TOOLS_STATISTICS_TRACEINFO, &CMainFrame::OnToolsStatistics)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -164,7 +168,7 @@ void CMainFrame::Dump(CDumpContext& dc) const
 BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 {
     BOOL bRet = FALSE;
-    FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}\n"),
+    FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}"),
         lpcs->cx, lpcs->cy);
     // create a splitter with 1 row, 2 columns
     CRect rcWin;
@@ -252,7 +256,7 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
         UINT nSize = ::DragQueryFile(hDropInfo, 0, NULL, 0);
         FTL::CFMemAllocator<TCHAR> buf(++nSize);
         ::DragQueryFile(hDropInfo, 0, buf.GetMemory(), nSize);
-        FTLTRACE(TEXT("DragFiles[%d]=%s\n"), 0, buf.GetMemory());
+        FTLTRACE(TEXT("DragFiles[%d]=%s"), 0, buf.GetMemory());
 
         CStringArray allLogFiles;
         allLogFiles.Add(buf.GetMemory());
@@ -263,11 +267,101 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
     //CFrameWnd::OnDropFiles(hDropInfo);
 }
 
+//检查是否有遗漏的日志 -- 如果有,说明因为某些原因(比如 模块过滤/等级过滤/程序bug?),造成日志文件中的记录不全,通常需要检查原因
+BOOL CMainFrame::OnToolsCheckMissingSeqNumber(UINT nID) {
+    BOOL bRet = FALSE;
+    LogIndexContainer missingLineList;
+    CLogManager& rLogManager = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager;
+    LONG nCount = rLogManager.CheckSeqNumber(&missingLineList, NULL, 10);
+
+    FTL::CFStringFormater formater;
+    if (nCount >= 1)
+    {
+        formater.AppendFormat(TEXT("Missing seq Number, count is %d: missing line No:"), nCount);
+
+        for (LogIndexContainerIter iter = missingLineList.begin(); iter != missingLineList.end(); ++iter)
+        {
+            formater.AppendFormat(TEXT("%d,"), *iter);
+        }
+        //std::ostringstream oss;
+        //std::copy(missingLineList.begin(), missingLineList.end(), std::ostream_iterator<int>(oss, ","));
+        //FTL::CFConversion conv;
+        //CAtlString strMissingList = conv.UTF8_TO_TCHAR(oss.str().c_str());
+        FTLTRACE(TEXT("%s"), formater.GetString());
+    }
+    else {
+        formater.AppendFormat(TEXT("no missing seq number"));
+    }
+    
+    FTL::FormatMessageBox(m_hWnd, TEXT("Check Missing Seq Number"), MB_OK, formater.GetString());
+    return TRUE;
+}
+
+//检查是否有日志顺序不正确的情况 -- 通常发生在多线程切换的场景下(生成了ID => 线程切换 => 写入缓冲或文件), 如果想解决,
+//  则需要保证是 生成ID+写入缓存或文件 是原子操作, 性能代价太大.
+//  因此可以考虑是正常现象,只是在分析日志时需要注意: 尤其在类似 多线程的生产者/消费者队列 时
+BOOL CMainFrame::OnToolsCheckReverseSeqNumber(UINT nID) 
+{
+    BOOL bRet = FALSE;
+
+    LogIndexContainer reverseLineList;
+    CLogManager& rLogManager = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager;
+    LONG nCount = rLogManager.CheckSeqNumber(NULL, &reverseLineList, 10);
+
+    FTL::CFStringFormater formater;
+    if (nCount >= 1)
+    {
+        formater.AppendFormat(TEXT("reverse seq Number, count is %d: reverse line No:"), nCount);
+        for (LogIndexContainerIter iter = reverseLineList.begin(); iter != reverseLineList.end(); ++iter)
+        {
+            formater.AppendFormat(TEXT("%d,"), *iter);
+        }
+        FTLTRACE(TEXT("%s"), formater.GetString());
+    }
+    else {
+        formater.AppendFormat(TEXT("no reverse seq number"));
+    }
+
+    FTL::FormatMessageBox(m_hWnd, TEXT("Check Reverse Seq Number"), MB_OK, formater.GetString());
+    return TRUE;
+}
+
+VOID CMainFrame::OnToolsStatistics(UINT nID)
+{
+    LogStatisticsInfos staticsInfos;
+    CLogManager& rLogManager = ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager;
+    LogItemContentType itemType = type_TraceInfo;
+
+    switch (nID)
+    {
+    case ID_TOOLS_STATISTICS_FILEPOS:
+        itemType = type_FilePos;
+        break;
+    case ID_TOOLS_STATISTICS_TRACEINFO:
+    default:
+        itemType = type_TraceInfo;
+        break;
+    }
+    LONG nStatistics = rLogManager.GetTopOccurrenceLogs(10, staticsInfos, itemType);
+
+    FTLTRACE(TEXT("nTop statics %d"), nStatistics);
+    CAtlString strFormater;
+    strFormater.Format(TEXT("item Type:%d\n"), itemType);
+
+    for (LogStatisticsInfos::iterator iter = staticsInfos.begin();
+    iter != staticsInfos.end(); ++iter) {
+        strFormater.AppendFormat(TEXT("  %s => %d\n"), iter->strLog, iter->count);
+        //FTLTRACE(TEXT(" %s => %d"), iter->strLog, iter->count);
+    }
+    MessageBox(strFormater, TEXT("Statistics"), MB_OK);
+}
+
 void CMainFrame::OnSettingConfigIniChange(UINT nID)
 {
     BOOL bRet = FALSE;
+
     UINT index = nID - IDC_SETTING_CONFIG_INI_BEGIN;
-    FTLTRACE(TEXT("OnSettingConfigIniChange, index=%d\n"), index);
+    FTLTRACE(TEXT("OnSettingConfigIniChange, index=%d"), index);
     API_VERIFY(m_menuIni.CheckMenuRadioItem(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END
         ,nID, MF_BYCOMMAND|MF_CHECKED));
 

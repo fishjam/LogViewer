@@ -9,12 +9,13 @@ struct ItemMapInfo
 
 struct LevelMapInfo
 {
-    LPCTSTR			pszLevelItem;
-    std::string*	pstrLevelText;
+    LPCTSTR                 pszLevelItem;
+    LevelsTextContainer*    pstrLevelText;
 };
 
 CLogViewerConfig::CLogViewerConfig(void)
 {
+    m_nItemSeqNum = INVLIAD_ITEM_MAP;
     m_nItemTime = INVLIAD_ITEM_MAP;
     m_nItemLevel = INVLIAD_ITEM_MAP;
     m_nItemMachine = INVLIAD_ITEM_MAP;
@@ -29,6 +30,7 @@ CLogViewerConfig::CLogViewerConfig(void)
     m_nItemSrcFileEx = INVLIAD_ITEM_MAP;
 
     m_dateTimeType = dttDateTime;
+    m_nMaxLineLength = 4096;
 }
 
 CLogViewerConfig::~CLogViewerConfig(void)
@@ -45,6 +47,7 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
         m_config.GetString(SECTION_COMMON, KEY_DISPLAY_TIMEFORMAT, m_strTimeFormat, m_strDisplayTimeFormat);
+        m_nMaxLineLength = (INT)m_config.GetInt(SECTION_COMMON, MAX_LINE_LENGTH, m_nMaxLineLength);
 
         m_config.GetString(SECTION_COMMON, KEY_SRC_REGULAR, DEFAULT_NULL_VALUE, m_strSrcRegular);
 
@@ -67,7 +70,7 @@ FTL::TraceLevel CLogViewerConfig::GetTraceLevelByText(const std::string& strLeve
     FTL::TraceLevel level = tlTrace;
     for (int i = 0; i < _countof(m_strLevelsText); i++)
     {
-        if (strLevel.compare(m_strLevelsText[i]) == 0)
+        if (m_strLevelsText[i].find(strLevel) != m_strLevelsText[i].end())
         {
             level = FTL::TraceLevel(i);
             break;
@@ -82,7 +85,8 @@ BOOL CLogViewerConfig::_LoadItemMaps()
     BOOL bRet = TRUE;
 
     ItemMapInfo itemMapInfos[] = {
-        { KEY_ITEM_TIME, &m_nItemTime},
+        { KEY_ITEM_SEQNUM, &m_nItemSeqNum },
+        { KEY_ITEM_TIME, &m_nItemTime },
         { KEY_ITEM_LEVEL, &m_nItemLevel},
         { KEY_ITEM_MACHINE, &m_nItemMachine},
         { KEY_ITEM_PID,	 &m_nItemPId},
@@ -124,7 +128,14 @@ BOOL CLogViewerConfig::_LoadLevelMaps()
         m_config.GetString(SECTION_LEVEL_MAP, levelMapInfos[i].pszLevelItem, DEFAULT_NULL_VALUE, strLevelValue);
         if (!strLevelValue.IsEmpty())
         {
-            *levelMapInfos[i].pstrLevelText = conv.TCHAR_TO_UTF8(strLevelValue);
+            std::list<CAtlString> strLevelTexts;
+            FTL::Split(strLevelValue, TEXT("|"), false, strLevelTexts);
+            
+            for (std::list<CAtlString>::iterator iter = strLevelTexts.begin();
+                iter != strLevelTexts.end();
+                ++iter) {
+                levelMapInfos[i].pstrLevelText->insert(conv.TCHAR_TO_UTF8(*iter));
+            }
         }
     }
 
