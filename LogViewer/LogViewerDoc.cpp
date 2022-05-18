@@ -17,7 +17,13 @@ IMPLEMENT_DYNCREATE(CLogViewerDoc, CDocument)
 
 BEGIN_MESSAGE_MAP(CLogViewerDoc, CDocument)
     ON_COMMAND(ID_FILE_OPEN, &CLogViewerDoc::OnFileOpen)
+
+    //采用另存的方式,免得覆盖源文件.如果想覆盖,自行选择同一个文件
     ON_COMMAND(ID_FILE_SAVE, &CLogViewerDoc::OnFileSave)
+    ON_COMMAND(ID_FILE_SAVE_AS, &CLogViewerDoc::OnFileSaveAs)
+
+    ON_COMMAND_RANGE(ID_FILE_EXPORT_FOR_LOG, ID_FILE_EXPORT_FOR_COMPARE, &CLogViewerDoc::OnFileExport)
+
     ON_COMMAND(ID_FILE_CLOSE, &CLogViewerDoc::OnFileClose)
     ON_COMMAND(ID_FILE_RELOAD, &CLogViewerDoc::OnFileReload)
     //ON_COMMAND(ID_FILE_GENERATE_LOG, &CLogViewerDoc::OnFileGenerateLog)
@@ -91,22 +97,7 @@ void CLogViewerDoc::Dump(CDumpContext& dc) const
 
 void CLogViewerDoc::GetFileFilterString(CString & strFilter)
 {
-    //BOOL  bRet = FALSE;
-    //TCHAR szFilterText[MAX_PATH] = {0};
-    
-    //LogFilterContainer& filters = m_pLogFilterManager->GetFilters();
-//     for (LogFilterPluginsContainer::iterator iter = m_logFilterPlugs.m_plugins.begin(); 
-//         iter != m_logFilterPlugs.m_plugins.end();
-//         ++iter)
-//     {
-//         LONG  filterTextLength = _countof(szFilterText);
-//         ILogFilterBase* pLogFilter = *iter;
-//         API_VERIFY(pLogFilter->GetFilterString(szFilterText, &filterTextLength));
-//         strFilter = strFilter + szFilterText + TEXT("|");        
-//     }
-
-	strFilter += TEXT("Log Files (*.log;*.txt)|*.log;*.txt|")
-		TEXT("Fast Trace Log Files (*.ftl)|*.ftl|");
+	strFilter += TEXT("Log Files (*.log;*.txt)|*.log;*.txt|");
 
     CString allFilter;
     VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));
@@ -171,17 +162,33 @@ void CLogViewerDoc::OnFileOpen()
 
 void CLogViewerDoc::OnFileSave()
 {
+    OnFileExport(ID_FILE_EXPORT_FOR_LOG);
+}
+
+void CLogViewerDoc::OnFileSaveAs()
+{
+    OnFileExport(ID_FILE_EXPORT_FOR_LOG);
+}
+
+void CLogViewerDoc::OnFileExport(UINT nID)
+{
     BOOL bRet = FALSE;
     CString strFilter;
     GetFileFilterString(strFilter);
     
-    CFileDialog dlgFile(FALSE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+    DWORD dwField = EXPORT_FIELD_DEFAULT;
+    if (ID_FILE_EXPORT_FOR_COMPARE == nID)
+    {
+        dwField = EXPORT_FIELD_COMPARE;
+    }
+
+    CFileDialog dlgFile(FALSE, TEXT("log"), NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
         strFilter, NULL, 0);
     INT_PTR nResult = dlgFile.DoModal();
     if (IDOK == nResult)
     {
         CString strPathName = dlgFile.GetPathName();
-        API_VERIFY(m_FTLogManager.SaveLogItems(strPathName, TRUE));
+        API_VERIFY(m_FTLogManager.ExportLogItems(strPathName, dwField, FALSE));
     }
 }
 

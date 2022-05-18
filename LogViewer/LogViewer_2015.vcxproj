@@ -233,7 +233,6 @@
     <ClCompile Include="VsIdeHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\LogFilterBase.h" />
     <ClInclude Include="..\LogViewerDefine.h" />
     <ClInclude Include="DialogGoTo.h" />
     <ClInclude Include="DialogSameFilesList.h" />

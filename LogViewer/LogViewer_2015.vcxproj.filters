@@ -62,9 +62,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\LogFilterBase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LogFilterView.h">
       <Filter>Header Files</Filter>
     </ClInclude>

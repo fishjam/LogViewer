@@ -16,6 +16,7 @@ namespace FTL
     LPCTSTR CFFileUtil::GetFileDesiredAccessFlagsString(FTL::CFStringFormater& formater, DWORD dwDesiredAccess, LPCTSTR pszDivide /* = TEXT("|") */)
     {
         DWORD oldDesiredAccess = dwDesiredAccess;
+        formater.AppendFormat(TEXT(""));  //make sure not null
 
         HANDLE_COMBINATION_VALUE_TO_STRING(formater, dwDesiredAccess, FILE_READ_DATA, pszDivide);
         HANDLE_COMBINATION_VALUE_TO_STRING(formater, dwDesiredAccess, FILE_WRITE_DATA, pszDivide);
@@ -444,6 +445,37 @@ namespace FTL
 		return pFile;
 	}
 
+    BOOL CFFile::Open(LPCTSTR pszFileName,
+        DWORD dwAccess,
+        DWORD dwShareMode,
+        LPSECURITY_ATTRIBUTES lpSA,
+        DWORD dwCreationDisposition,
+        DWORD dwAttributes,
+        HANDLE hTemplateFile
+    )
+    {
+        FTLASSERT(INVALID_HANDLE_VALUE == m_hFile);
+
+        // Attempt file creation
+        HANDLE hFile = ::CreateFile(pszFileName,
+            dwAccess,
+            dwShareMode,
+            lpSA,
+            dwCreationDisposition,
+            dwAttributes,
+            hTemplateFile);
+
+        if (hFile == INVALID_HANDLE_VALUE)
+        {
+            //CFFileException ex((long)::GetLastError());
+            //throw ex;
+            return FALSE;
+        }
+        m_hFile = hFile;
+        m_strFileName = pszFileName;
+        return TRUE;
+    }
+
 	//-----------------------------------------------------------------------------
 	// Creates or opens a file
 	//-----------------------------------------------------------------------------
@@ -455,27 +487,27 @@ namespace FTL
 		DWORD dwAttributes,			// file attributes
 		HANDLE hTemplateFile)			// handle to template file
 	{
+        FTLASSERT(INVALID_HANDLE_VALUE == m_hFile);
 		//_ASSERT(!strFileName.IsEmpty());				// file name should not be empty
 		//_ASSERT(strFileName.GetLength() <= MAX_PATH);	// the file name is limited to 
 		// MAX_PATH charactes
 
-		m_hFile = NULL;
-		m_strFileName.Empty();
-
-		// Retrieve the full path and file name 
-		TCHAR szTemp[MAX_PATH];
-		LPTSTR lpszFilePart;
-
-		if (!::GetFullPathName(pszFileName, MAX_PATH, szTemp, &lpszFilePart))
+#if 0
+        //TODO: 为什么要这个? 在 长路径时有问题
+        // Retrieve the full path and file name 
+        TCHAR szTemp[MAX_PATH] = { 0 };
+        LPTSTR lpszFilePart;
+        if (!::GetFullPathName(pszFileName, MAX_PATH, szTemp, &lpszFilePart))
 		{
 			_ASSERT(FALSE);
 			m_strFileName = pszFileName;
 		}
 
 		m_strFileName = szTemp;
+#endif 
 
 		// Attempt file creation
-		HANDLE hFile = ::CreateFile(m_strFileName, 
+		HANDLE hFile = ::CreateFile(pszFileName,
 			dwAccess, 
 			dwShareMode, 
 			lpSA,
@@ -496,7 +528,15 @@ namespace FTL
 			::SetFilePointer(hFile, 0, 0, FILE_END);
 
 		m_hFile = hFile;
+        m_strFileName = pszFileName;
+
 		return TRUE;
+	}
+
+	BOOL CFFile::isValid() const
+	{
+		BOOL isValidHandle = (m_hFile != INVALID_HANDLE_VALUE);
+		return isValidHandle;
 	}
 
     BOOL CFFile::Attach(HANDLE hFile)
@@ -556,21 +596,39 @@ namespace FTL
 		_ASSERT(m_hFile && ((m_hFile) != INVALID_HANDLE_VALUE));
 		_ASSERT(lpBuf);
 
+		PBYTE pWritePos = (PBYTE)lpBuf;
 		// Avoid a null write operation, since the behavior of a null
 		// write operation depends on the underlying file system
 		if (nCount == 0)
 		{
 			return TRUE;
 		}
-        DWORD dwWritten = 0;
-        DWORD* pLocalWritten = pdwWritten;
-        if (!pLocalWritten)
-        {
-            pLocalWritten = &dwWritten;
-        }
-		// Write data to a file
-		API_VERIFY_EXCEPT1(::WriteFile(m_hFile, lpBuf, nCount, pLocalWritten, lpOverlapped),
-            ERROR_IO_PENDING);
+		DWORD dwTotalWritten = 0, dwCurWritten = 0;
+		
+		// 写到文件里面去, 保证尽量都写完(实测似乎除了磁盘满, 优盘断开等失败的情况,不会出现写成功, 但是写的字节数少的情况)
+		//   TODO: 是否会和操作系统有关?
+		do 
+		{
+			API_VERIFY(WriteFile(m_hFile, pWritePos, nCount, &dwCurWritten, lpOverlapped));
+			if (!bRet)
+			{
+				break;
+			}
+			FTLTRACEEX(FTL::tlInfo, TEXT("Write file, want %d, real %d, diff=%d"), 
+				nCount, dwCurWritten, (nCount - dwCurWritten));
+			if (dwCurWritten != nCount)
+			{
+				FTLASSERT(FALSE); //什么情况下会发生
+			}
+
+			nCount -= dwCurWritten;
+			pWritePos += dwCurWritten;
+		} while (bRet && dwCurWritten < nCount);
+
+		if (pdwWritten)
+		{
+			*pdwWritten = (DWORD)(pWritePos - (PBYTE)lpBuf);
+		}
         return bRet;
 	}
 
@@ -582,7 +640,7 @@ namespace FTL
 		_ASSERT(m_hFile && ((m_hFile) != INVALID_HANDLE_VALUE));
 
 		DWORD dwWritten;
-		CString strCRLF = TEXT("\r\n");	// \r\n at the end of each line
+		CAtlString strCRLF = TEXT("\r\n");	// \r\n at the end of each line
 
 		// Append CR-LF pair 
 		if (!::WriteFile(m_hFile, strCRLF, strCRLF.GetLength(), &dwWritten, NULL))
@@ -705,15 +763,33 @@ namespace FTL
 	//-----------------------------------------------------------------------------
 	LONGLONG CFFile::GetLength() const
 	{
-		CFFile * pFile = (CFFile*)this;
+		BOOL bRet = FALSE;
+		LARGE_INTEGER nFileSize = { 0 };
 
-		return pFile->SeekToEnd();
+		API_VERIFY(::GetFileSizeEx(m_hFile, &nFileSize));
+		return nFileSize.QuadPart;
+
+		//CFFile * pFile = (CFFile*)this;
+		//return pFile->SeekToEnd();
 	}
 
+    BOOL CFFile::GetFileTime(LPFILETIME pCreationTime, LPFILETIME pLastAccessTime, LPFILETIME pLastWriteTime)
+    {
+        BOOL bRet = FALSE;
+        API_VERIFY(::GetFileTime(m_hFile, pCreationTime, pLastAccessTime, pLastWriteTime));
+        return bRet;
+    }
+
+    BOOL CFFile::SetFileTime(const FILETIME* pCreationTime, const FILETIME* pLastAccessTime, const FILETIME* pLastWriteTime)
+    {
+        BOOL bRet = FALSE;
+        API_VERIFY(::SetFileTime(m_hFile, pCreationTime, pLastAccessTime, pLastWriteTime));
+        return bRet;
+    }
 	//-----------------------------------------------------------------------------
 	// Renames the specified file. Directories cannot be renamed
 	//-----------------------------------------------------------------------------
-	BOOL CFFile::Rename(CString strOldName, CString strNewName)
+	BOOL CFFile::Rename(CAtlString strOldName, CAtlString strNewName)
 	{
 		BOOL bRet = FALSE;
 		API_VERIFY(::MoveFile(strOldName, strNewName));
@@ -723,7 +799,7 @@ namespace FTL
 	//-----------------------------------------------------------------------------
 	// Deletes the specified file.
 	//-----------------------------------------------------------------------------
-	BOOL CFFile::Remove(CString strFileName)
+	BOOL CFFile::Remove(CAtlString strFileName)
 	{
 		BOOL bRet = FALSE;
 		API_VERIFY(::DeleteFile(strFileName));
@@ -746,6 +822,10 @@ namespace FTL
 		return Seek(0LL, CFFile::begin);
 	}
 
+    BOOL CFFile::SetEndOfFile() 
+    {
+        return ::SetEndOfFile(m_hFile);
+    }
 	//-----------------------------------------------------------------------------
 	// Sets the full file path of the selected file, for example, if the path of a 
 	// file is not available when a CFFile object is constructed, call SetFilePath to 
@@ -753,7 +833,7 @@ namespace FTL
 	// SetFilePath does not open the file or create the file; it simply associates the 
 	// CFFile object with a path name, which can then be used.
 	//-----------------------------------------------------------------------------
-	BOOL CFFile::SetFilePath(CString strNewName)
+	BOOL CFFile::SetFilePath(CAtlString strNewName)
 	{
 		FTLASSERT(m_hFile && ((m_hFile) != INVALID_HANDLE_VALUE));
 
@@ -772,7 +852,7 @@ namespace FTL
 	//-----------------------------------------------------------------------------
 	// Retrieves the full file path of the selected file.
 	//-----------------------------------------------------------------------------
-	CString CFFile::GetFilePath() const
+	CAtlString CFFile::GetFilePath() const
 	{
 		_ASSERT(m_hFile && ((m_hFile) != INVALID_HANDLE_VALUE));
 		_ASSERT(!m_strFileName.IsEmpty());		// file name should not be empty
@@ -783,7 +863,7 @@ namespace FTL
 	//-----------------------------------------------------------------------------
 	// Retrieves the filename of the selected file.
 	//-----------------------------------------------------------------------------
-	CString CFFile::GetFileName() const
+	CAtlString CFFile::GetFileName() const
 	{
 		_ASSERT(m_hFile && ((m_hFile) != INVALID_HANDLE_VALUE));
 		_ASSERT(!m_strFileName.IsEmpty());		// file name should not be empty
@@ -797,7 +877,7 @@ namespace FTL
 				lpszTemp = const_cast<LPTSTR>(_tcsinc(lpsz));
 		}
 
-		return CString(lpszTemp);
+		return CAtlString(lpszTemp);
 	}
 
 	//-----------------------------------------------------------------------------
@@ -978,8 +1058,8 @@ namespace FTL
     }
 
     template <typename TEncoding>
-    CFTextFile<TEncoding>::CFTextFile(TextFileEncoding fileEncoding)
-        :m_fileEncoding(fileEncoding)
+    CFTextFile<TEncoding>::CFTextFile()
+        :m_fileEncoding((FTL::TextFileEncoding)TEncoding::ENCODING)
     {
     }
 
@@ -1020,6 +1100,10 @@ namespace FTL
             //do nothing
             bRet = TRUE;
             break;
+		case tfeAnsi:
+			//do nothing
+			bRet = TRUE;
+			break;
         default:
             FTLASSERT(FALSE);
             break;
@@ -1068,43 +1152,59 @@ namespace FTL
         
         FileFindResultHandle resultHandler = rhContinue;
 
+        //注意: 虽然 CPath 能比较好的处理路径问题, 但不支持 LongPath,最大 MAX_PATH
+
         while (!m_FindDirs.empty() && rhStop != resultHandler)
         {
-            const CAtlString& strFindPath = m_FindDirs.front();
+            CAtlString& strFindPath = m_FindDirs.front();
             FTLASSERT(!strFindPath.IsEmpty());
 
-            CPath path(strFindPath);
+            TCHAR szLastChar = strFindPath.GetAt(strFindPath.GetLength() - 1);
+            if (szLastChar != TEXT('\\') && szLastChar != TEXT('/') )
+            {
+                strFindPath.Append(TEXT("\\"));
+            }
+
+            CAtlString strRealFindPath(strFindPath);  //增加了 扩展名和 LongPath 处理,已经不是原始的路径
+
             if (1 == m_FindFilters.size())
             {
-                path.Append(m_strFilter);
+                strRealFindPath.Append(m_strFilter);
             }
             else
             {
-                path.Append(TEXT("*.*"));
+                strRealFindPath.Append(TEXT("*.*"));
+            }
+
+            if (strRealFindPath.GetLength() >= MAX_PATH)
+            {
+                strRealFindPath = TEXT("\\\\?\\") + strRealFindPath;
             }
 
             WIN32_FIND_DATA findData = { 0 };
 
             HANDLE hFind = NULL;
-            API_VERIFY_EXCEPT1(((hFind = FindFirstFile(path.m_strPath, &findData)) != INVALID_HANDLE_VALUE),
-				ERROR_FILE_NOT_FOUND);
+            //TODO: FindFirstFileEx（path, FindExInfoStandard, &findData, FindExSearchNameMatch, NULL, 0)
+            API_VERIFY_EXCEPT2(((hFind = FindFirstFile(strRealFindPath, &findData)) != INVALID_HANDLE_VALUE),
+                ERROR_FILE_NOT_FOUND, ERROR_ACCESS_DENIED);
             if (bRet)
             {
                 do 
                 {
-                    CPath pathFullFindResult(strFindPath);
-                    pathFullFindResult.Append(findData.cFileName);
+                    CAtlString pathFullFindResult(strFindPath);
+                    pathFullFindResult += findData.cFileName;
                     if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
                     {
                         if ((lstrcmpi(findData.cFileName, _T(".")) != 0) 
                             && (lstrcmpi(findData.cFileName, _T("..")) != 0))
                         {
-                            resultHandler = m_pCallback->OnFindFile(pathFullFindResult.m_strPath, findData, m_pParam);
+                            resultHandler = m_pCallback->OnFindFile(pathFullFindResult, findData, m_pParam);
                             //normal dir 
                             if (bRecursive && (rhContinue == resultHandler))
                             {
-                                m_FindDirs.push_back(pathFullFindResult.m_strPath);
+                                m_FindDirs.push_back(pathFullFindResult);
                             }
+                            //else(rhSkipDir), just skip it
                         }
                     }
                     else
@@ -1113,7 +1213,7 @@ namespace FTL
                         //if (data.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED) { GetCompressedFileSize() }
                         if (_isMatchFilterFile(findData.cFileName))
                         {
-                            resultHandler = m_pCallback->OnFindFile(pathFullFindResult.m_strPath, findData, m_pParam);
+                            resultHandler = m_pCallback->OnFindFile(pathFullFindResult, findData, m_pParam);
                         }
                     }
 
@@ -1121,13 +1221,18 @@ namespace FTL
                 } while (bRet && (rhStop != resultHandler));
                 API_VERIFY(FindClose(hFind));
             }
+            else {
+                DWORD dwLastError = GetLastError();
+                m_pCallback->OnError(strFindPath, dwLastError, m_pParam);
+            }
             m_FindDirs.pop_front();
         }
 
         return bRet;
     }
 
-    BOOL CFFileFinder::_isMatchFilterFile(LPCTSTR pszFileName)
+	//TODO: 系统提供了 PathMatchSpec(支持通配符 * 和 ?, 也支持分号分开的多个,如 "*.txt;*.tmp;*.log" )
+	BOOL CFFileFinder::_isMatchFilterFile(LPCTSTR pszFileName)
     {
         BOOL bMatch = FALSE;
         for (FindFiltersContainer::iterator iter = m_FindFilters.begin();
@@ -1135,7 +1240,7 @@ namespace FTL
             ++iter)
         {
             const CAtlString& strFilter = *iter;
-            bMatch = CFStringUtil::IsMatchMask(pszFileName, strFilter, FALSE);
+            bMatch = PathMatchSpec(pszFileName, strFilter); // CFStringUtil::IsMatchMask(pszFileName, strFilter, FALSE);
             if (bMatch)
             {
                 break;
@@ -1435,6 +1540,12 @@ namespace FTL
         
     }
 
+    FileFindResultHandle CFDirectoryCopier::OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam)
+    {
+        UNREFERENCED_PARAMETER(pParam);
+        FTLTRACEEX(tlError, TEXT("Find Error:%d for %s"), dwError, pszFilePath);
+        return rhContinue;
+    }
     //////////////////////////////////////////////////////////////////////////
 
     CFStructuredStorageFile::CFStructuredStorageFile()

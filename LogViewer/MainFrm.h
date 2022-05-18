@@ -32,6 +32,7 @@ public:
 
     //IFileFindCallback
     virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam);
+    virtual FileFindResultHandle OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam);
 
 // Implementation
 public:

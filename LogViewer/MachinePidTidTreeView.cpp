@@ -93,16 +93,16 @@ void CMachinePidTidTreeView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHi
     if (pSender != this)
     {
         CFConversion conv;
-        std::string stdstring;
+        std::wstring stdstring;
         MachinePIdTIdType* pFilterIdType = NULL;
         if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID == lHint)
         {
             pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + "/" + pFilterIdType->pid;
+            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + TEXT("/") + pFilterIdType->pid;
         }
         else  if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID == lHint) {
             pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + "/" + pFilterIdType->pid + "/" + pFilterIdType->tid;
+            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + TEXT("/") + pFilterIdType->pid + TEXT("/") + pFilterIdType->tid;
         }
         if (NULL == pFilterIdType)
         {
@@ -110,7 +110,7 @@ void CMachinePidTidTreeView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHi
         }
 
         m_filterHint = lHint;
-        CString strFilterPath = conv.UTF8_TO_TCHAR(stdstring.c_str());
+        CString strFilterPath = stdstring.c_str();
         enumTreeCtrl(this, (DWORD_PTR)&strFilterPath);
     }
 }
@@ -125,7 +125,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
     tvInsertStruct.itemex.mask = TVIF_TEXT|TVIF_STATE;
     tvInsertStruct.itemex.stateMask = TVIS_STATEIMAGEMASK;
     tvInsertStruct.itemex.state = INDEXTOSTATEIMAGEMASK((fCheck ? 2 : 1));
-    tvInsertStruct.itemex.pszText = TEXT(MPT_TREE_ROOT);
+    tvInsertStruct.itemex.pszText = MPT_TREE_ROOT;
 
     HTREEITEM hItemAll = treeCtrl.InsertItem(&tvInsertStruct);
 
@@ -134,7 +134,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
         ++iterMachine){
             FTL::CFConversion conv;
             tvInsertStruct.hParent = hItemAll;
-            tvInsertStruct.itemex.pszText = conv.UTF8_TO_TCHAR(iterMachine->first.c_str());
+            tvInsertStruct.itemex.pszText = (LPWSTR)iterMachine->first.c_str();
             HTREEITEM hItemMachine = treeCtrl.InsertItem(&tvInsertStruct);
 
             PidTidContainer& pidTidContainer = iterMachine->second;
@@ -143,7 +143,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
                 ++iterPid)
             {
                 tvInsertStruct.hParent = hItemMachine;
-                tvInsertStruct.itemex.pszText = conv.UTF8_TO_TCHAR(iterPid->first.c_str());
+                tvInsertStruct.itemex.pszText = (LPWSTR)iterPid->first.c_str();
                 HTREEITEM hItemPid = treeCtrl.InsertItem(&tvInsertStruct);
                 treeCtrl.Expand(hItemMachine,TVE_EXPAND);
                 
@@ -154,7 +154,7 @@ void CMachinePidTidTreeView::_InitIdsTree(CTreeCtrl& treeCtrl, MachinePidTidCont
                     ++iterTid)
                 {
                     tvInsertStruct.hParent = hItemPid;
-                    tvInsertStruct.itemex.pszText = conv.UTF8_TO_TCHAR(iterTid->first.c_str());
+                    tvInsertStruct.itemex.pszText = (LPWSTR)iterTid->first.c_str();
 
                     HTREEITEM hItemTid = treeCtrl.InsertItem(&tvInsertStruct);
                     treeCtrl.SetItemData(hItemTid, (DWORD_PTR)&(iterTid->second));

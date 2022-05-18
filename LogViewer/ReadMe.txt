@@ -74,7 +74,7 @@ LogViewerDoc.h, LogViewerDoc.cpp - the document
         File type ID:        LogViewer.Document
         Main frame caption:  LogViewer
         Doc type name:       FastTraceLogVie
-        Filter name:         LogViewer Files (*.FTL)
+        Filter name:         LogViewer Files (*.log)
         File new short name: FastTraceLogVie
         File type long name: LogViewer.Document
 

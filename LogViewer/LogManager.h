@@ -26,6 +26,27 @@ enum LogItemContentType  //用于排序
     type_SortCount
 };
 
+#define EXPORT_FIELD_LINE_NUM       0x0001
+#define EXPORT_FIELD_SEQ_NUM        0x0002
+#define EXPORT_FIELD_MACHINE        0x0004
+#define EXPORT_FIELD_PID            0x0008
+#define EXPORT_FIELD_TID            0x0010
+#define EXPORT_FIELD_TIME           0x0020
+#define EXPORT_FIELD_TRACE_LEVEL    0x0040
+#define EXPORT_FIELD_MODULE_NAME    0x0080
+#define EXPORT_FIELD_FUN_NAME       0x0100
+#define EXPORT_FIELD_FILE_POS       0x0200
+#define EXPORT_FIELD_TRACE_INFO     0x0400
+
+#define EXPORT_FIELD_ALL            0xFFFF
+
+//缺省导出(不需要 lineNum)
+#define EXPORT_FIELD_DEFAULT        (EXPORT_FIELD_ALL & ~EXPORT_FIELD_LINE_NUM)
+
+// 导出多个日志文件,并进行比较(比如想比较多次运行相同流程时的日志情况)
+#define EXPORT_FIELD_COMPARE        \
+    (EXPORT_FIELD_TRACE_LEVEL|EXPORT_FIELD_MODULE_NAME|EXPORT_FIELD_FUN_NAME|EXPORT_FIELD_FILE_POS|EXPORT_FIELD_TRACE_INFO)
+
 enum FilterType {
     ftAll,
     ftAny,
@@ -57,6 +78,7 @@ class CLogManager: public IFileFindCallback
 public:
     //IFileFindCallback
     virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam);
+    virtual FileFindResultHandle OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam);
 public:
     CLogManager(void);
     ~CLogManager(void);
@@ -72,18 +94,20 @@ public:
 
     //! bAll 为 TRUE 表示保存所有的日志
     //! bAll 为 FALSE 表示保存显示的日志(按照显示的顺序进行保存)
-    BOOL SaveLogItems(LPCTSTR pszFilePath, BOOL bAll = FALSE);
+    BOOL ExportLogItems(LPCTSTR pszFilePath, DWORD dwFileds = EXPORT_FIELD_DEFAULT, BOOL bAll = FALSE);
 
     LONG GetDisplayLogItemCount() const;
     LONG GetTotalLogItemCount() const;
 
     const LogItemPointer GetDisplayLogItem(LONG index) const;
     BOOL TryReparseRealFileName(CString& strFileName);
+    CString FormatDateTime(LONGLONG time, DateTimeType dtType);
 
     BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
     LONG GetActiveLineIndex();
     CString getActiveItemTraceInfo();
+   
 
     MachinePidTidContainer& GetAllMachinePidTidInfos(){
         return m_allMachinePidTidInfos;
@@ -179,4 +203,7 @@ protected:
     int _ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage);
     LPCTSTR _CopyItemInfo(LPCTSTR pszSource);
     void _AppendLogItem(LogItemPointer& pLogItem);
+    LPCTSTR _ConvertNullString(LPCTSTR pszText) {
+        return pszText ? pszText : TEXT("");     //避免在 %s 对 NULL 进行 format 时输出(null) 或 crash
+    }
 };

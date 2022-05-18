@@ -8,7 +8,6 @@
 #include "VsIdeHandler.h"
 //class CLogFilterManager;
 #include <ftlSystem.h>
-#include "../LogFilterBase.h"
 
 #define SECTION_CONFIG          TEXT("Config")
 #define ENTRY_ACTIVE_INI        TEXT("ActiveIni")
@@ -56,6 +55,8 @@ public:
 
     afx_msg void OnFileOpen();
     afx_msg void OnFileSave();
+    afx_msg void OnFileSaveAs();
+    afx_msg void OnFileExport(UINT nID);
     afx_msg void OnFileClose();
     afx_msg void OnFileReload();
     //afx_msg void OnFileGenerateLog();

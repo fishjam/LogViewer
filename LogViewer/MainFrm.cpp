@@ -66,6 +66,13 @@ FileFindResultHandle CMainFrame::OnFindFile(LPCTSTR pszFilePath, const WIN32_FIN
     return rhContinue;
 }
 
+FileFindResultHandle CMainFrame::OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam)
+{
+    FTL::CFAPIErrorInfo errInfo(dwError);
+    FTLTRACEEX(FTL::tlError, TEXT("err:%d(%s), path=%s"), dwError, errInfo.GetConvertedInfo(), pszFilePath);
+    return rhContinue;
+}
+
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
     BOOL bRet = FALSE;

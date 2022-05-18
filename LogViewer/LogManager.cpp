@@ -217,39 +217,72 @@ BOOL CLogManager::ClearAllLogItems()
     return TRUE;
 }
 
-BOOL CLogManager::SaveLogItems(LPCTSTR pszFilePath, BOOL bAll /* = FALSE */)
+BOOL CLogManager::ExportLogItems(LPCTSTR pszFilePath, DWORD dwFileds /* = EXPORT_FIELD_DEFAULT */, BOOL bAll /* = FALSE */)
 {
     BOOL bRet = FALSE;
     srand(GetTickCount());
-    CStdioFile file;
-    API_VERIFY(file.Open(pszFilePath,CFile::modeWrite | CFile::modeCreate | CFile::typeText));
+    FTL::CFUTF8File file;
+    //CStdioFile file;
+    //API_VERIFY(file.Open(pszFilePath,CFile::modeWrite | CFile::modeCreate | CFile::typeText));
+    API_VERIFY(file.Create(pszFilePath));
     if (bRet)
     {
         do 
         {
-            CString strFormat;
             CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
             LogItemArrayType* pSaveLogItems = bAll ? &m_AllLogItems : &m_DisplayLogItems;
 
-#if 0
-            for (int i = 0; i < 100000; i++)
+            API_VERIFY(file.WriteFileHeader());
+            for (LogItemArrayIterator iter = pSaveLogItems->begin() ; 
+                iter != pSaveLogItems->end() && bRet;
+                ++iter)
             {
-                strFormat.Format(TEXT("%04d-%02d-%02d %02d:%02d:%02d:%d: (%d|%d) Sau.Utils: INFO: Some Real Infomation\n"),
-                    2011,rand()%12+1,
-                    rand()%28+1, 
-                    rand()%24,
-                    rand()%60,rand()%60,
-                    rand()%1000000,rand()%20+300000, rand()%30+1090525000);
-                file.WriteString(strFormat);
-            }
-#else
-            for (LogItemArrayIterator iter = pSaveLogItems->begin() ; iter != pSaveLogItems->end(); ++iter)
-            {
+                CString strFormat;
+
+                //保存成 FTL Log 的格式
                 LogItemPointer pItem = *iter;
-                strFormat.Format(TEXT("%08d,%s\n"),pItem->lineNum,pItem->pszTraceInfo);
-                file.WriteString(strFormat);
+                if (INVALID_SEQ_NUMBER != pItem->seqNum)
+                {   //完整日志
+
+                    if (dwFileds & EXPORT_FIELD_FILE_POS)
+                    {
+                        strFormat.AppendFormat(TEXT("%s(%d):"), _ConvertNullString(pItem->pszSrcFileName), pItem->srcFileline);
+                    }
+                    if (dwFileds & EXPORT_FIELD_SEQ_NUM)
+                    {
+                        strFormat.AppendFormat(TEXT("%d|"), pItem->seqNum);
+                    }
+                    if (dwFileds & EXPORT_FIELD_TIME)
+                    {
+                        strFormat.AppendFormat(TEXT("%s|"), FormatDateTime(pItem->time, dttTime));
+                    }
+                    if (dwFileds & EXPORT_FIELD_PID)
+                    {
+                        strFormat.AppendFormat(TEXT("%s|"), pItem->processId.c_str());
+                    }
+                    if (dwFileds & EXPORT_FIELD_TID)
+                    {
+                        strFormat.AppendFormat(TEXT("%s|"), pItem->threadId.c_str());
+                    }
+                    if (dwFileds & EXPORT_FIELD_TRACE_LEVEL)
+                    {
+                        strFormat.AppendFormat(TEXT("%s|"), CFLogger::GetLevelName(pItem->level));
+                    }
+                    if (dwFileds & EXPORT_FIELD_MODULE_NAME)
+                    {
+                        strFormat.AppendFormat(TEXT("%s|"), _ConvertNullString(pItem->pszModuleName));
+                    }
+                    if (dwFileds & EXPORT_FIELD_TRACE_INFO)
+                    {
+                        strFormat.AppendFormat(TEXT("%s\n"), pItem->pszTraceInfo);
+                    }
+                }
+                else {
+                    //不完整日志,因此只输出 traceInfo
+                    strFormat.Format(TEXT("%s\n"), pItem->pszTraceInfo);
+                }
+                API_VERIFY(file.WriteString(strFormat));
             }
-#endif 
         } while (FALSE);
         file.Close();
     }
@@ -489,6 +522,40 @@ BOOL CLogManager::TryReparseRealFileName(CString& strFileName)
     return FALSE;
 }
 
+
+CString CLogManager::FormatDateTime(LONGLONG time, DateTimeType dtType)
+{
+    BOOL bRet = FALSE;
+    CString strFormat;
+
+    int microSec = 0;
+    SYSTEMTIME st = { 0 };
+    if (dttDateTime == dtType)
+    {
+        //带日期的时间
+        //FILETIME localFileTime = {0};
+        FILETIME tm = { 0 };
+        tm.dwHighDateTime = HILONG(time);//(pLogItem->time & 0xFFFFFFFF00000000) >> 32;
+        tm.dwLowDateTime = LOLONG(time);// ( pLogItem->time & 0xFFFFFFFF);
+        API_VERIFY(FileTimeToSystemTime(&tm, &st));
+        strFormat.Format(TEXT("%4d-%02d-%02d %02d:%02d:%02d:%03d"),
+            st.wYear, st.wMonth, st.wDay,
+            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    }
+    else {
+        LONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
+        microSec = disTime % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
+        LONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
+        st.wSecond = tmpTime % 60;
+        tmpTime /= 60;
+        st.wMinute = tmpTime % 60;
+        st.wHour = (WORD)tmpTime / 60;
+        strFormat.Format(TEXT("%02d:%02d:%02d.%03d"),
+            st.wHour, st.wMinute, st.wSecond, microSec);
+    }
+    return strFormat;
+}
+
 void CLogManager::setActiveItemIndex(LONG lineIndex, LONG displayIndex){
     m_activeLineIndex = lineIndex;
     m_activeDisplayIndex = displayIndex;
@@ -663,6 +730,13 @@ FileFindResultHandle CLogManager::OnFindFile(LPCTSTR pszFilePath, const WIN32_FI
     return rhContinue;
 }
 
+FileFindResultHandle CLogManager::OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam)
+{
+    FTL::CFAPIErrorInfo errInfo(dwError);
+    FTLTRACEEX(FTL::tlError, TEXT("err:%d(%s), path=%s"), dwError, errInfo.GetConvertedInfo(), pszFilePath);
+    return rhContinue;
+}
+
 BOOL CLogManager::ScanSourceFiles(const CString& strFolderPath)
 {
     BOOL bRet = FALSE;
@@ -833,6 +907,7 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
     std::tr1::smatch regularResults;
     bool result = std::tr1::regex_match(strOneLog, regularResults, reg);
     LogItemPointer pItem(new LogItem);
+    FTL::CFConversion conv;
 
 #if ENABLE_COPY_FULL_LOG
     _ConvertItemInfo(strOneLog, pItem->pszFullLog, m_codePage);
@@ -931,16 +1006,16 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         }
         if (m_logConfig.m_nItemMachine != INVLIAD_ITEM_MAP){
             std::string strMachine = std::string(regularResults[m_logConfig.m_nItemMachine]);
-            pItem->machine = FTL::Trim(strMachine);
+            pItem->machine = conv.UTF8_TO_TCHAR(FTL::Trim(strMachine).c_str());
         }
         if (m_logConfig.m_nItemPId != INVLIAD_ITEM_MAP){
             std::string strPid = std::string(regularResults[m_logConfig.m_nItemPId]);
-            pItem->processId = FTL::Trim(strPid);
+            pItem->processId = conv.UTF8_TO_TCHAR(FTL::Trim(strPid).c_str());
         }
         if (m_logConfig.m_nItemTId != INVLIAD_ITEM_MAP)
         {
             std::string strTid = std::string(regularResults[m_logConfig.m_nItemTId]);
-            pItem->threadId = FTL::Trim(strTid);
+            pItem->threadId = conv.UTF8_TO_TCHAR(FTL::Trim(strTid).c_str());
         }
         if (m_logConfig.m_nItemModule != INVLIAD_ITEM_MAP)
         {
@@ -1121,7 +1196,7 @@ BOOL CLogManager::_CalcThreadElpaseTime(LogItemArrayType& logItems, LONG& outPro
         }
 
         //判断是否是新的进程(将线程 id 统一为 空,即可查找(TODO: 将 machine + processId 合并成一个字符串,可以快速计算个数?
-        MachinePIdTIdType processCountType(pLogItem->machine, pLogItem->processId, "");
+        MachinePIdTIdType processCountType(pLogItem->machine, pLogItem->processId, TEXT(""));
         if (processCalcContainer.end() == processCalcContainer.find(processCountType))
         {
             processCalcContainer.insert(processCountType);

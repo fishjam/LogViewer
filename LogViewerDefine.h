@@ -14,11 +14,11 @@
 //time 现在的单位是 FILETIME(100ns)
 #define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
-#define DEFAULT_LOCAL_MACHINE       "local"
+#define DEFAULT_LOCAL_MACHINE       TEXT("local")
 
 // machine => PID => TID configuration
-#define MPT_TREE_ROOT				"All"
-#define MPT_TREE_ROOT_PATH			"/All/"
+#define MPT_TREE_ROOT				TEXT("All")
+#define MPT_TREE_ROOT_PATH			TEXT("/All/")
 
 //在 filter item 列表中通过右键选择只显示指定 pid/tid 的日志 => 更新 machinePidTid 视图. TODO: 是否有更好的方式?
 #define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID      1001
@@ -31,9 +31,9 @@ enum ONLY_SELECT_TYPE{
     ostThreadId,
 };
 
-typedef std::string MACHINE_NAME_TYPE;
-typedef std::string THREAD_ID_TYPE;
-typedef std::string PROCESS_ID_TYPE;
+typedef std::wstring MACHINE_NAME_TYPE;
+typedef std::wstring THREAD_ID_TYPE;
+typedef std::wstring PROCESS_ID_TYPE;
 
 struct MachinePIdTIdType{
     MachinePIdTIdType() {
@@ -92,6 +92,7 @@ typedef PidTidContainer::iterator             PidTidContainerIter;
 
 typedef std::map<MACHINE_NAME_TYPE, PidTidContainer>    MachinePidTidContainer;
 typedef MachinePidTidContainer::iterator          MachinePidTidContainerIter;
+typedef MachinePidTidContainer::const_iterator    MachinePidTidContainerConstIter;
 
 //用于保存多行的行信息
 typedef std::list<int> LogIndexContainer;
@@ -129,8 +130,8 @@ struct LogItem
         time = 0;
         elapseTime = 0;
         machine = DEFAULT_LOCAL_MACHINE;
-        processId = "0";
-        threadId = "0";
+        processId = TEXT("0");
+        threadId = TEXT("0");
         level = FTL::tlEnd;
         pszFunName = NULL;
         pszModuleName = NULL;

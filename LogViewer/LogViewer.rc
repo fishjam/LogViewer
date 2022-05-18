@@ -112,6 +112,11 @@ BEGIN
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        POPUP "Export"
+        BEGIN
+            MENUITEM "Export For Log",              ID_FILE_EXPORT_FOR_LOG
+            MENUITEM "Export for Compare",          ID_FILE_EXPORT_FOR_COMPARE
+        END
         MENUITEM "Close",                       ID_FILE_CLOSE
         MENUITEM "Reload",                      ID_FILE_RELOAD
         MENUITEM SEPARATOR
@@ -430,7 +435,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDR_MAINFRAME           "LogViewer\n\nFastTraceLogVie\nLogViewer Files (*.FTL)\n.FTL\nLogViewer.Document\nLogViewer.Document"
+    IDR_MAINFRAME           "LogViewer\n\nFastTraceLogVie\nLogViewer Files (*.log)\n.log\nLogViewer.Document\nLogViewer.Document"
 END
 
 STRINGTABLE

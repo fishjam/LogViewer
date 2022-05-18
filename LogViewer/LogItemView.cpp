@@ -276,46 +276,21 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             break;
         case type_Machine:
-            strFormat = conv.UTF8_TO_TCHAR(pLogItem->machine.c_str());
-            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
+            //strFormat = conv.UTF8_TO_TCHAR(pLogItem->machine.c_str());
+            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, pLogItem->machine.c_str());
             break;
         case type_ProcessId:
-            strFormat = conv.UTF8_TO_TCHAR(pLogItem->processId.c_str());
-            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
+            //strFormat = conv.UTF8_TO_TCHAR(pLogItem->processId.c_str());
+            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, pLogItem->processId.c_str());
             break;
         case type_ThreadId:
-            strFormat = conv.UTF8_TO_TCHAR(pLogItem->threadId.c_str());
-            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
+            //strFormat = conv.UTF8_TO_TCHAR(pLogItem->threadId.c_str());
+            StringCchCopy(pItem->pszText,pItem->cchTextMax - 1, pLogItem->threadId.c_str());
             break;
         case type_Time:
             if (pLogItem->time != 0)
             {
-                int microSec = 0;
-                SYSTEMTIME st = {0};
-                if (dttDateTime == logManager.m_logConfig.m_dateTimeType)
-                {
-                    //带日期的时间
-                    //FILETIME localFileTime = {0};
-                    FILETIME tm = { 0 };
-                    tm.dwHighDateTime = HILONG(pLogItem->time);//(pLogItem->time & 0xFFFFFFFF00000000) >> 32;
-                    tm.dwLowDateTime = LOLONG(pLogItem->time);// ( pLogItem->time & 0xFFFFFFFF);
-                    API_VERIFY(FileTimeToSystemTime(&tm,&st));
-                    strFormat.Format(TEXT("%4d-%02d-%02d %02d:%02d:%02d:%03d"),
-                        st.wYear, st.wMonth, st.wDay,
-                        st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-                }else{
-                    LONGLONG disTime = pLogItem->time % MIN_TIME_WITH_DAY_INFO;
-                    microSec = disTime % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
-                    LONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
-                    st.wSecond = tmpTime % 60;
-                    tmpTime /= 60;
-                    st.wMinute = tmpTime % 60;
-                    st.wHour = (WORD)tmpTime / 60;
-                    strFormat.Format(TEXT("%02d:%02d:%02d.%03d"),
-                        st.wHour, st.wMinute, st.wSecond, microSec);
-                }
-
+                strFormat = logManager.FormatDateTime(pLogItem->time, logManager.m_logConfig.m_dateTimeType);
                 StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             }
             else

@@ -240,10 +240,21 @@ namespace FTL
 
 		// Operations
 		FTLINLINE virtual LONGLONG GetPosition() const;
-		FTLINLINE virtual CString GetFileName() const;
-		FTLINLINE virtual CString GetFilePath() const;
-		FTLINLINE virtual BOOL SetFilePath(CString strNewName);
+		FTLINLINE virtual CAtlString GetFileName() const;
+		FTLINLINE virtual CAtlString GetFilePath() const;
+		FTLINLINE virtual BOOL SetFilePath(CAtlString strNewName);
 
+        //for read
+        FTLINLINE virtual BOOL Open(LPCTSTR pszFileName,
+            DWORD dwAccess = GENERIC_READ,
+            DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE,
+            LPSECURITY_ATTRIBUTES lpSA = NULL,
+            DWORD dwCreationDisposition = OPEN_EXISTING,
+            DWORD dwAttributes = FILE_ATTRIBUTE_NORMAL,
+            HANDLE hTemplateFile = NULL
+        );
+
+        //for read write
 		FTLINLINE virtual BOOL Create(LPCTSTR pszFileName, 
 			DWORD dwAccess = GENERIC_WRITE | GENERIC_READ,
 			DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -253,20 +264,24 @@ namespace FTL
 			HANDLE hTemplateFile = NULL
 			);
 
+		FTLINLINE BOOL isValid() const;
         FTLINLINE BOOL Attach(HANDLE hFile);
         FTLINLINE HANDLE Detach();
 
-		FTLINLINE static BOOL Rename(CString strOldName, CString strNewName);
-		FTLINLINE static BOOL Remove(CString strFileName);
+		FTLINLINE static BOOL Rename(CAtlString strOldName, CAtlString strNewName);
+		FTLINLINE static BOOL Remove(CAtlString strFileName);
 
 		FTLINLINE LONGLONG SeekToEnd();
 		FTLINLINE LONGLONG SeekToBegin();
+        FTLINLINE virtual BOOL SetEndOfFile();
 
 		FTLINLINE virtual CFFile * Duplicate() const;
 
 		FTLINLINE virtual LONGLONG Seek(LONGLONG lOff, UINT nFrom);
 		FTLINLINE virtual BOOL SetLength(LONGLONG newLen);
 		FTLINLINE virtual LONGLONG GetLength() const;
+        FTLINLINE virtual BOOL GetFileTime(LPFILETIME pCreationTime, LPFILETIME pLastAccessTime, LPFILETIME pLastWriteTime);
+        FTLINLINE virtual BOOL SetFileTime(const FILETIME* pCreationTime, const FILETIME* pLastAccessTime, const FILETIME* pLastWriteTime);
 
 		FTLINLINE virtual BOOL Read(void* lpBuf, DWORD nCount, DWORD* pdwRead, LPOVERLAPPED lpOverlapped = NULL);
 		FTLINLINE virtual BOOL Write(const void* lpBuf, DWORD nCount, DWORD* pdwWritten, LPOVERLAPPED lpOverlapped = NULL);
@@ -289,18 +304,21 @@ namespace FTL
 		FTLINLINE virtual UINT GetBufferPtr(UINT nCommand, UINT nCount = 0, void** ppBufStart = NULL, void** ppBufMax = NULL);
 
 	protected:
-		CString m_strFileName;	// stores the file name for the current file
+		CAtlString m_strFileName;	// stores the file name for the current file
     };
 
     class CFFileAnsiEncoding
     {
     public:
+		enum { ENCODING = TextFileEncoding::tfeAnsi };
         FTLINLINE static BOOL WriteEncodingString(CFFile* pFile, const CAtlString& strValue, 
             DWORD* pnBytesWritten, LPOVERLAPPED lpOverlapped = NULL);
     };
     class CFFileUTF8Encoding
     {
     public:
+		enum { ENCODING = TextFileEncoding::tfeUTF8 };
+
         FTLINLINE static BOOL WriteEncodingString(CFFile* pFile, const CAtlString& strValue, 
             DWORD* pnBytesWritten, LPOVERLAPPED lpOverlapped = NULL);
     };
@@ -308,6 +326,8 @@ namespace FTL
     class CFFileUnicodeEncoding
     {
     public:
+		enum { ENCODING = TextFileEncoding::tfeUnicode };
+
         FTLINLINE static BOOL WriteEncodingString(CFFile* pFile, const CAtlString& strValue, 
             DWORD* pnBytesWritten, LPOVERLAPPED lpOverlapped = NULL);
     };
@@ -317,7 +337,7 @@ namespace FTL
     {
     public:
         typedef CFTextFile< TEncoding > thisClass;
-        FTLINLINE CFTextFile(TextFileEncoding fileEncoding);
+        FTLINLINE CFTextFile();
         FTLINLINE BOOL WriteFileHeader(LPOVERLAPPED lpOverlapped = NULL);
         FTLINLINE BOOL WriteString(const CAtlString&strValue, DWORD* pnBytesWritten = NULL, LPOVERLAPPED lpOverlapped = NULL);
     private:
@@ -325,7 +345,8 @@ namespace FTL
     };
 
     typedef CFTextFile<CFFileAnsiEncoding>    CFAnsiFile;
-    typedef CFTextFile<CFFileUnicodeEncoding> CFUnicodeFile;
+	typedef CFTextFile<CFFileUnicodeEncoding> CFUnicodeFile;
+	typedef CFTextFile<CFFileUTF8Encoding>    CFUTF8File;
 
     //有 ATLPath 实现了很多功能, 如 RemoveFileSpec(删除路径最后的文件名)
     class CFPath
@@ -353,6 +374,7 @@ namespace FTL
     {
     public:
         virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam) = 0;
+        virtual FileFindResultHandle OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam) = 0;
     };
 
     //同步查找指定目录 -- 采用了递推方式来避免递归方式的问题
@@ -409,6 +431,7 @@ namespace FTL
         FTLINLINE BOOL WaitToEnd(DWORD dwMilliseconds = INFINITE);
     public:
         FTLINLINE virtual FileFindResultHandle OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam);
+        FTLINLINE virtual FileFindResultHandle OnError(LPCTSTR pszFilePath, DWORD dwError, LPVOID pParam);
     protected:
         ICopyDirCallback*               m_pCallback;
 

@@ -255,6 +255,8 @@ namespace FTL
         FTLINLINE static CFLogger& GetInstance();
         FTLINLINE static LPCWSTR GetBaseNameW(LPCWSTR pszFilePath);
         FTLINLINE static LPCSTR GetBaseNameA(LPCSTR pszFilePath);
+        FTLINLINE static LPCTSTR GetLevelName(TraceLevel level);
+
         FTLINLINE LPCWSTR GetCurrentTimeStrW(LPWSTR pszTimeBuf, INT nTimeBufCount);
         FTLINLINE LPCSTR GetCurrentTimeStrA(LPSTR pszTimeBuf, INT nTimeBufCount);
     public:
@@ -265,7 +267,6 @@ namespace FTL
         FTLINLINE VOID SetTraceOptions(const LoggerTraceOptions& traceOptions);
 
         FTLINLINE BOOL CheckLevel(TraceLevel level);
-        FTLINLINE LPCTSTR GetLevelName(TraceLevel level);
         FTLINLINE ULONG GetNextTraceSequenceNumber();
 
         FTLINLINE VOID /*__cdecl*/ WriteLogInfoExW(TraceLevel level, const LPCWSTR lpszFormat, ...);
