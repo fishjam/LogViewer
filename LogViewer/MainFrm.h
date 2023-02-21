@@ -5,7 +5,7 @@
 #pragma once
 
 #define IDC_SETTING_CONFIG_INI_BEGIN (WM_USER + 0x600)
-#define IDC_SETTING_CONFIG_INI_END   (WM_USER + 0x60f)
+#define IDC_SETTING_CONFIG_INI_END   (WM_USER + 0x63f)
 
 #define IDC_CODE_PAGE_BEGIN			 ID_CODE_PAGE_UTF8
 #define IDC_CODE_PAGE_END            ID_CODE_PAGE_KOREAN
@@ -50,6 +50,7 @@ protected:  // control bar embedded members
     CSplitterWnd    m_wndHorzSplitter;
     CStringArray    m_iniFiles;
     CMenu           m_menuIni;
+    TCHAR           m_szModulePath[MAX_PATH];
 // Generated message map functions
 protected:
     afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

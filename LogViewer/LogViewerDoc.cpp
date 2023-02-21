@@ -24,6 +24,7 @@ BEGIN_MESSAGE_MAP(CLogViewerDoc, CDocument)
 
     ON_COMMAND_RANGE(ID_FILE_EXPORT_FOR_LOG, ID_FILE_EXPORT_FOR_COMPARE, &CLogViewerDoc::OnFileExport)
 
+    ON_COMMAND(ID_FILE_EXPLORER, &CLogViewerDoc::OnFileExplorer)
     ON_COMMAND(ID_FILE_CLOSE, &CLogViewerDoc::OnFileClose)
     ON_COMMAND(ID_FILE_RELOAD, &CLogViewerDoc::OnFileReload)
     //ON_COMMAND(ID_FILE_GENERATE_LOG, &CLogViewerDoc::OnFileGenerateLog)
@@ -189,6 +190,16 @@ void CLogViewerDoc::OnFileExport(UINT nID)
     {
         CString strPathName = dlgFile.GetPathName();
         API_VERIFY(m_FTLogManager.ExportLogItems(strPathName, dwField, FALSE));
+    }
+}
+
+void CLogViewerDoc::OnFileExplorer() 
+{
+    CString strFirstLogFilePath = m_FTLogManager.GetFirstLogFilePath();
+    if (!strFirstLogFilePath.IsEmpty())
+    {
+        HRESULT hr = E_FAIL;
+        COM_VERIFY(CFShellUtil::ExplorerToSpecialFile(strFirstLogFilePath));
     }
 }
 

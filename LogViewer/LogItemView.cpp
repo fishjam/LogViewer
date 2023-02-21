@@ -300,7 +300,7 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             break;
         case type_ElapseTime:
             {
-                strFormat.Format(TEXT("%.3f s"), (double)pLogItem->elapseTime * 100 / NANOSECOND_PER_SECOND);
+                strFormat.Format(TEXT("%.9f s"), (double)pLogItem->elapseTime / NANOSECOND_PER_SECOND);
                 StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,(LPCTSTR)strFormat);
             }
             break;

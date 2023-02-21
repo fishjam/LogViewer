@@ -14,6 +14,21 @@ public:
     LogItemFilter(CLogManager & logManager)
         : m_LogManager(logManager)
     {
+        if (m_LogManager.m_filterType == ftRegex) {
+            // 表达式选项 - 忽略大小写
+            try
+            {
+                std::regex_constants::syntax_option_type fl = std::regex_constants::icase;
+                m_regularPattern.assign(m_LogManager.m_strLogInfoFilterString, fl);
+            }
+            catch (const std::tr1::regex_error& e)
+            {
+                FTL::CFConversion convText, convError;
+                FTL::FormatMessageBox(NULL, TEXT("Regex Error"), MB_OK,
+                    TEXT("Wrong Regex, reason is %s"), convError.UTF8_TO_TCHAR(e.what()));
+            }
+
+        }
     }
     bool operator()(const LogItemPointer& pItem) const
     {
@@ -37,13 +52,15 @@ public:
         {
             if (!m_LogManager.m_strLogInfoFilterString.IsEmpty())
             {
+                CAtlString strFilter = m_LogManager.m_strLogInfoFilterString;
+                std::tr1::wcmatch regularResults;
+
                 BOOL bFilterByString = TRUE;
                 if (m_LogManager.m_filterType == ftAny)
                 {
                     bFilterByString = FALSE;
                 }
 
-                CAtlString strFilter = m_LogManager.m_strLogInfoFilterString;
                 //bChecked = FTL::CFStringUtil::IsMatchMask(pItem->pszTraceInfo, m_LogManager.m_strLogInfoFilterString, FALSE);
                 std::list<CAtlString> tokens;
                 FTL::Split(strFilter, TEXT(" "), false, tokens);
@@ -56,6 +73,9 @@ public:
                         break;
                     case ftAny:
                         bFilterByString |= bMatch;
+                        break;
+                    case ftRegex:
+                        bFilterByString &= (BOOL)(std::tr1::regex_match(pItem->pszTraceInfo, regularResults, m_regularPattern));
                         break;
                     case ftNone:
                         bFilterByString &= (!bMatch);
@@ -74,6 +94,7 @@ public:
     };
 private:
     CLogManager& m_LogManager;
+    std::tr1::wregex m_regularPattern;
 };
 
 struct LogItemCompare : public std::binary_function<LogItemPointer, LogItemPointer, bool>
@@ -244,6 +265,13 @@ BOOL CLogManager::ExportLogItems(LPCTSTR pszFilePath, DWORD dwFileds /* = EXPORT
                 if (INVALID_SEQ_NUMBER != pItem->seqNum)
                 {   //完整日志
 
+                    if (dwFileds & EXPORT_FIELD_MACHINE)
+                    {
+                        if (0 != pItem->machine.compare(DEFAULT_LOCAL_MACHINE))
+                        {
+                            strFormat.AppendFormat(TEXT("%s|"), pItem->machine.c_str());
+                        }
+                    }
                     if (dwFileds & EXPORT_FIELD_FILE_POS)
                     {
                         strFormat.AppendFormat(TEXT("%s(%d):"), _ConvertNullString(pItem->pszSrcFileName), pItem->srcFileline);
@@ -254,7 +282,7 @@ BOOL CLogManager::ExportLogItems(LPCTSTR pszFilePath, DWORD dwFileds /* = EXPORT
                     }
                     if (dwFileds & EXPORT_FIELD_TIME)
                     {
-                        strFormat.AppendFormat(TEXT("%s|"), FormatDateTime(pItem->time, dttTime));
+                        strFormat.AppendFormat(TEXT("%s|"), FormatDateTime(pItem->time, m_logConfig.m_dateTimeType));
                     }
                     if (dwFileds & EXPORT_FIELD_PID)
                     {
@@ -523,12 +551,17 @@ BOOL CLogManager::TryReparseRealFileName(CString& strFileName)
 }
 
 
-CString CLogManager::FormatDateTime(LONGLONG time, DateTimeType dtType)
+CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
 {
     BOOL bRet = FALSE;
     CString strFormat;
 
-    int microSec = 0;
+    //其值是 纳秒, 为了计算成 FILETIME 的值(100ns)
+    ULONGLONG time = nanoSeconds / 100;
+    //把微秒值计算出来
+    int nanoSec = nanoSeconds % NANOSECOND_PER_SECOND;
+    time = time / TIME_RESULT_TO_MILLISECOND * TIME_RESULT_TO_MILLISECOND;  //取整,将毫秒数据清除
+
     SYSTEMTIME st = { 0 };
     if (dttDateTime == dtType)
     {
@@ -538,20 +571,19 @@ CString CLogManager::FormatDateTime(LONGLONG time, DateTimeType dtType)
         tm.dwHighDateTime = HILONG(time);//(pLogItem->time & 0xFFFFFFFF00000000) >> 32;
         tm.dwLowDateTime = LOLONG(time);// ( pLogItem->time & 0xFFFFFFFF);
         API_VERIFY(FileTimeToSystemTime(&tm, &st));
-        strFormat.Format(TEXT("%4d-%02d-%02d %02d:%02d:%02d:%03d"),
+        strFormat.Format(TEXT("%4d-%02d-%02d %02d:%02d:%02d.%09d"),
             st.wYear, st.wMonth, st.wDay,
-            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+            st.wHour, st.wMinute, st.wSecond, nanoSec);
     }
     else {
-        LONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
-        microSec = disTime % TIME_RESULT_TO_MILLISECOND / (10 * 1000);
-        LONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
+        ULONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
+        ULONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
         st.wSecond = tmpTime % 60;
         tmpTime /= 60;
         st.wMinute = tmpTime % 60;
         st.wHour = (WORD)tmpTime / 60;
-        strFormat.Format(TEXT("%02d:%02d:%02d.%03d"),
-            st.wHour, st.wMinute, st.wSecond, microSec);
+        strFormat.Format(TEXT("%02d:%02d:%02d.%09d"),
+            st.wHour, st.wMinute, st.wSecond, nanoSec);
     }
     return strFormat;
 }
@@ -923,7 +955,9 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
             {
                 SYSTEMTIME st = {0};
                 GetLocalTime(&st);  //获取年月日等信息,后面才能通过 SystemTimeToFileTime 转换
+                st.wMilliseconds = 0;  //其精度只能到毫秒, 因此设置为 0, 通过 nanoSecond(纳秒)保存及转换
 
+                int nanoSecond = 0;  //纳秒
                 int microSecond = 0; //微秒
                 int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
                 if (-1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))) //不要最后的 +08:00
@@ -931,8 +965,8 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                     m_logConfig.m_dateTimeType = dttDateTime;
                     //2022-03-30T11:17:50.380+08:00   <== Nelo 上的时间
                     sscanf_s(strTime.c_str(), "%04hu-%02hu-%02huT%02hu:%02hu:%02hu%*c%3d+%*c",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = (WORD)(microSecond / 1000);
+                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+                    nanoSecond = milliSecond * 1000000;
                 }
                 else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS")))
                 {
@@ -940,7 +974,14 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                     //2017-06-12 18:21:34.193000
                     sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%6d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = (WORD)(microSecond / 1000);
+                    nanoSecond = microSecond * 1000;
+                }
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+                {
+                    m_logConfig.m_dateTimeType = dttDateTime;
+                    //2017-06-12 18:21:34.193000
+                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%9d",
+                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
                 }
                 else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS")))
                 {
@@ -948,7 +989,8 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                     //2017-06-12 18:21:34.193
                     sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%3d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
-                    st.wMilliseconds = (WORD)milliSecond;
+                    microSecond = milliSecond * 1000;
+                    nanoSecond = milliSecond * 1000000;
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
@@ -965,13 +1007,19 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                     m_logConfig.m_dateTimeType = dttTime;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%3d",
                         &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
-                    st.wMilliseconds = (WORD)milliSecond;
+                    microSecond = milliSecond * 1000;
+                    nanoSecond = milliSecond * 1000000;
                 }
                 else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSS"))) {
                     m_logConfig.m_dateTimeType = dttTime;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%6d",
                         &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    st.wMilliseconds = (WORD)(microSecond/1000);
+                    nanoSecond = microSecond * 1000;
+                }
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSSSSS"))) {
+                    m_logConfig.m_dateTimeType = dttTime;
+                    sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%9d",
+                        &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
                 }
                 else{
                     FTLASSERT(FALSE);
@@ -987,7 +1035,10 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
 
                 FILETIME localFileTime = {0};
                 API_VERIFY(SystemTimeToFileTime(&st,&localFileTime));
-                pItem->time = *((LONGLONG*)&localFileTime);// ((((st.wHour * 60) + st.wMinute) * 60) + st.wSecond)* 1000 + microSecond;
+
+                ULONGLONG fileTimeValue = *((LONGLONG*)&localFileTime);  // 表示 100 ns
+                pItem->time = fileTimeValue * 100 + nanoSecond;
+                
                 if (m_logConfig.m_dateTimeType == dttTime)
                 {
                     //保留带日期的完整时间, 从而能正常排序, 显示时进行处理
@@ -1087,6 +1138,7 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
         //std::set<THREAD_ID_TYPE> threadIdsContainer;
 
         LogItemPointer preLogItem;
+        DWORD dwStartTime = GetTickCount();
 
         try{
             const std::tr1::regex regularPattern(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular));
@@ -1135,6 +1187,16 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                     _AppendLogItem(pLogItem);
                 }
                 readCount++; //放到这个地方来，保证即使一行日志读取失败，lineNum 还是和文件的行数对应
+
+#define LOG_INTERVAL_COUNT       10000
+                if (0 == (readCount % LOG_INTERVAL_COUNT))
+                {
+                    //每读取一万记录, 输出一次日志
+                    DWORD dwNow = GetTickCount();
+                    DWORD dwElapseTime = dwNow - dwStartTime;
+                    FTLTRACE(TEXT("count=%d, parse %d log, use %d ms"), readCount, LOG_INTERVAL_COUNT, dwElapseTime);
+                    dwStartTime = dwNow;
+                }
             }
             bRet = TRUE;
         }catch(const std::tr1::regex_error& e){

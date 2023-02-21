@@ -57,6 +57,7 @@ public:
     afx_msg void OnFileSave();
     afx_msg void OnFileSaveAs();
     afx_msg void OnFileExport(UINT nID);
+    afx_msg void OnFileExplorer();
     afx_msg void OnFileClose();
     afx_msg void OnFileReload();
     //afx_msg void OnFileGenerateLog();

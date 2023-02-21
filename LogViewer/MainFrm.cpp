@@ -59,10 +59,21 @@ CMainFrame::~CMainFrame()
 
 FileFindResultHandle CMainFrame::OnFindFile(LPCTSTR pszFilePath, const WIN32_FIND_DATA& findData, LPVOID pParam)
 {
-    UNREFERENCED_PARAMETER(pszFilePath);
+    BOOL bRet = FALSE;
     UNREFERENCED_PARAMETER(pParam);
 
-    m_iniFiles.Add(findData.cFileName);
+    if (0 == (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        //只处理文件
+        TCHAR szRelativePath[MAX_PATH] = { 0 };
+        API_VERIFY(PathRelativePathTo(szRelativePath, m_szModulePath, 0, pszFilePath, FILE_ATTRIBUTE_DIRECTORY));
+        if (bRet)
+        {
+		    //去除最前面的 ".\\" 前缀
+            m_iniFiles.Add(_tcschr(szRelativePath, TEXT('\\')) + 1);
+        }
+    }
+    
     return rhContinue;
 }
 
@@ -110,19 +121,28 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     }
     //查找当前目录下的所有 .ini 文件，然后放入菜单
     FTL::CFFileFinder finder;
-    TCHAR szModulePath[MAX_PATH] = {0};
     finder.SetCallback(this, this);
-    API_VERIFY(0 != GetModuleFileName(NULL, szModulePath, _countof(szModulePath)));
-    _tcsrchr(szModulePath, TEXT('\\'))[1]='\0';
-    API_VERIFY_EXCEPT1(finder.Find(szModulePath, _T("*.ini"), FALSE), ERROR_FILE_NOT_FOUND);
+    API_VERIFY(0 != GetModuleFileName(NULL, m_szModulePath, _countof(m_szModulePath)));
+    _tcsrchr(m_szModulePath, TEXT('\\'))[1]='\0';
+    API_VERIFY_EXCEPT1(finder.Find(m_szModulePath, _T("*.ini"), FALSE), ERROR_FILE_NOT_FOUND);
 
     CString strActiveIni = AfxGetApp()->GetProfileString(SECTION_CONFIG, ENTRY_ACTIVE_INI);
     UINT nActiveMenuId = (UINT)(-1);
     m_menuIni.CreatePopupMenu();
     for (int i = 0; i < m_iniFiles.GetCount(); i++)
     {
-        CString strIniFileName = m_iniFiles.GetAt(i);
-        m_menuIni.AppendMenu(MF_STRING, IDC_SETTING_CONFIG_INI_BEGIN + i, strIniFileName);
+        CAtlString strIniFileName = m_iniFiles.GetAt(i);
+        std::list<CAtlString> listPaths;
+        FTL::Split(strIniFileName, TEXT("\\"), false, listPaths);
+        while (listPaths.size() > 1)
+        {
+            //有目录, TODO: 尚未编写完毕, 需要设置为 递归查找后,继续完成这里的 Menu 生成
+            CAtlString folder = listPaths.front();
+            listPaths.pop_front();
+        }
+
+        CAtlString strFileName = listPaths.front();
+        m_menuIni.AppendMenu(MF_STRING, IDC_SETTING_CONFIG_INI_BEGIN + i, strFileName);
         if (!strActiveIni.IsEmpty() && strActiveIni.CompareNoCase(strIniFileName) == 0)
         {
             nActiveMenuId = IDC_SETTING_CONFIG_INI_BEGIN + i;
@@ -175,8 +195,8 @@ void CMainFrame::Dump(CDumpContext& dc) const
 BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
 {
     BOOL bRet = FALSE;
-    FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}"),
-        lpcs->cx, lpcs->cy);
+    FTLTRACE(TEXT("OnCreateClient, lpcs={cx=%d, cy=%d}"), lpcs->cx, lpcs->cy);  //-2147483648(即0x80000000)
+
     // create a splitter with 1 row, 2 columns
     CRect rcWin;
     GetWindowRect(&rcWin);

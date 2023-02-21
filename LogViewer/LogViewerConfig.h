@@ -38,8 +38,7 @@
 
 enum DateTimeType{
     dttDateTime,
-    dttDate,
-    dttTime
+    dttTime,
 };
 
 typedef std::set<std::string> LevelsTextContainer;

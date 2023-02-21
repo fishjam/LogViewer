@@ -106,8 +106,8 @@ struct LogItem
     LONG                moduleNameLen;      //模块名字的长度
     LONG                traceInfoLen;       //pszTraceInfo 的长度，目前必须是 pszTraceInfo 字符串长度+1(包括结尾的NULL,不浪费空间)
     LONG                srcFileline;        //在源文件中的行号
-    LONGLONG            time;               //FILETIME 对应的值(100ns）
-    LONGLONG            elapseTime;
+    ULONGLONG           time;               //保存 ns(纳秒), 其值 /10 以后就是 FILETIME 对应的值(100ns）
+    ULONGLONG           elapseTime;
     MACHINE_NAME_TYPE   machine;            //机器名(一般用于dsh)
     PROCESS_ID_TYPE     processId;
     THREAD_ID_TYPE      threadId;

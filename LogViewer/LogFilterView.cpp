@@ -154,13 +154,41 @@ void CLogFilterView::OnTimer(UINT_PTR nIDEvent)
         {
             m_bFilterStringChanged = FALSE;
             m_lastFilterStringChangeTick = dwCurTicket;
+            BOOL isExceptionHappened = FALSE;
 
             API_VERIFY(UpdateData(TRUE));
-            CLogViewerDoc* pDoc = GetDocument();
-            pDoc->m_FTLogManager.SetFilterLineNumber(m_nStartLineNumber, m_nEndLineNumber);
-            pDoc->m_FTLogManager.SetLogInfoFilterString(m_strFilterString,
-                (FilterType)m_comboBoxFilter.GetCurSel());
-            pDoc->UpdateAllViews(this, VIEW_UPDATE_HINT_SELECT_LINE_INDEX, NULL);
+            FilterType filterType = (FilterType)m_comboBoxFilter.GetCurSel();
+            if (ftRegex == filterType)
+            {
+                //检查正则表达式是否合法
+                try
+                {
+                    std::tr1::wregex regularPattern(m_strFilterString);
+                    std::tr1::wcmatch regularResults;
+
+                    //TODO: 如果没有这里的代码, 系统是否会将 regularPattern 优化掉?
+                    BOOL bEmptyMatchResult = std::tr1::regex_match(TEXT(""), regularResults, regularPattern);
+                    if (!bEmptyMatchResult)
+                    {
+                        FTLTRACE(TEXT("check text reg filter: %d"), bEmptyMatchResult);
+                    }
+                }
+                catch (const std::tr1::regex_error& e)
+                {
+                    isExceptionHappened = TRUE;
+                    FTL::CFConversion convText, convError;
+                    FTL::FormatMessageBox(NULL, TEXT("Regex for Text Filter"), MB_OK,
+                        TEXT("Wrong Regex, reason is %s"), convError.UTF8_TO_TCHAR(e.what()));
+                }
+            }
+
+            if (!isExceptionHappened)
+            {
+                CLogViewerDoc* pDoc = GetDocument();
+                pDoc->m_FTLogManager.SetFilterLineNumber(m_nStartLineNumber, m_nEndLineNumber);
+                pDoc->m_FTLogManager.SetLogInfoFilterString(m_strFilterString, filterType);
+                pDoc->UpdateAllViews(this, VIEW_UPDATE_HINT_SELECT_LINE_INDEX, NULL);
+            }
         }
     }
     __super::OnTimer(nIDEvent);

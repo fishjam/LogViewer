@@ -48,9 +48,11 @@ enum LogItemContentType  //”√”⁄≈≈–Ú
     (EXPORT_FIELD_TRACE_LEVEL|EXPORT_FIELD_MODULE_NAME|EXPORT_FIELD_FUN_NAME|EXPORT_FIELD_FILE_POS|EXPORT_FIELD_TRACE_INFO)
 
 enum FilterType {
+    ftUnknown = -1,
     ftAll,
     ftAny,
-    ftNone
+    ftNone,
+    ftRegex,
 };
 struct SortContent
 {
@@ -101,7 +103,7 @@ public:
 
     const LogItemPointer GetDisplayLogItem(LONG index) const;
     BOOL TryReparseRealFileName(CString& strFileName);
-    CString FormatDateTime(LONGLONG time, DateTimeType dtType);
+    CString FormatDateTime(ULONGLONG time, DateTimeType dtType);
 
     BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
