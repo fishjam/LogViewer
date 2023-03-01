@@ -7,7 +7,6 @@
 #define new DEBUG_NEW
 #endif
 
-
 struct LogItemFilter : public std::unary_function<LogItemPointer, bool>
 {
 public:
@@ -467,6 +466,11 @@ BOOL CLogManager::SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay)
     return TRUE;
 }
 
+void CLogManager::SetDisplayTimeType(DateTimeType dateTimeType)
+{
+    m_logConfig.m_dateTimeType = dateTimeType;
+}
+
 BOOL CLogManager::SetFilterLineNumber(LONG nStartLineNumber, LONG nEndLineNumber){
     m_nStartLineNumber = nStartLineNumber;
     m_nEndLineNumber = nEndLineNumber;
@@ -554,7 +558,7 @@ BOOL CLogManager::TryReparseRealFileName(CString& strFileName)
 CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
 {
     BOOL bRet = FALSE;
-    CString strFormat;
+    CString strResult;
 
     //其值是 纳秒, 为了计算成 FILETIME 的值(100ns)
     ULONGLONG time = nanoSeconds / 100;
@@ -563,7 +567,7 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
     time = time / TIME_RESULT_TO_MILLISECOND * TIME_RESULT_TO_MILLISECOND;  //取整,将毫秒数据清除
 
     SYSTEMTIME st = { 0 };
-    if (dttDateTime == dtType)
+    if (dtType <= dttDateTimeLast)
     {
         //带日期的时间
         //FILETIME localFileTime = {0};
@@ -571,9 +575,29 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
         tm.dwHighDateTime = HILONG(time);//(pLogItem->time & 0xFFFFFFFF00000000) >> 32;
         tm.dwLowDateTime = LOLONG(time);// ( pLogItem->time & 0xFFFFFFFF);
         API_VERIFY(FileTimeToSystemTime(&tm, &st));
-        strFormat.Format(TEXT("%4d-%02d-%02d %02d:%02d:%02d.%09d"),
+
+        //解析显示方式
+        CString strFormat = TEXT("");
+        int nSecDisplayValue = 0;   
+        switch (dtType)
+        {
+        case dttDateTimeMilliSecond:
+            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%03d");
+            nSecDisplayValue = nanoSec / 1000000;
+            break;
+        case dttDateTimeMicrosecond:
+            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%06d");
+            nSecDisplayValue = nanoSec / 1000;
+            break;
+        case dttDateTimeNanoSecond: //默认显示成纳秒
+        default:
+            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%09d");
+            nSecDisplayValue = nanoSec;     
+            break;
+        }
+        strResult.Format(strFormat,
             st.wYear, st.wMonth, st.wDay,
-            st.wHour, st.wMinute, st.wSecond, nanoSec);
+            st.wHour, st.wMinute, st.wSecond, nSecDisplayValue);
     }
     else {
         ULONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
@@ -582,11 +606,54 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
         tmpTime /= 60;
         st.wMinute = tmpTime % 60;
         st.wHour = (WORD)tmpTime / 60;
-        strFormat.Format(TEXT("%02d:%02d:%02d.%09d"),
-            st.wHour, st.wMinute, st.wSecond, nanoSec);
+
+        CString strFormat = TEXT("");
+        int nSecDisplayValue = 0;
+        switch (dtType)
+        {
+        case dttTimeMilliSecond:
+            strFormat = TEXT("%02d:%02d:%02d.%03d");
+            nSecDisplayValue = nanoSec / 1000000;
+            break;
+        case dttTimeMicrosecond:
+            strFormat = TEXT("%02d:%02d:%02d.%06d");
+            nSecDisplayValue = nanoSec / 1000;
+            break;
+        case dttTimeNanoSecond: //默认显示成纳秒
+        default:
+            strFormat = TEXT("%02d:%02d:%02d.%09d");
+            nSecDisplayValue = nanoSec;
+            break;
+        }
+        strResult.Format(strFormat,
+            st.wHour, st.wMinute, st.wSecond, nSecDisplayValue);
     }
-    return strFormat;
+    return strResult;
 }
+
+CString CLogManager::FormatElapseTime(ULONGLONG elapseTime, DateTimeType dtType)
+{
+    CString strResult;
+    switch (dtType)
+    {
+    case dttDateTimeMilliSecond:
+    case dttTimeMilliSecond:
+        strResult.Format(TEXT("%.3f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
+        break;
+    case dttDateTimeMicrosecond:
+    case dttTimeMicrosecond:
+        strResult.Format(TEXT("%.6f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
+        break;
+    case dttDateTimeNanoSecond:
+    case dttTimeNanoSecond:
+    default:
+        strResult.Format(TEXT("%.9f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
+
+        break;
+    }
+    return strResult;
+}
+
 
 void CLogManager::setActiveItemIndex(LONG lineIndex, LONG displayIndex){
     m_activeLineIndex = lineIndex;
@@ -953,6 +1020,10 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
             std::string strTime = FTL::Trim(std::string(regularResults[m_logConfig.m_nItemTime]));
             if (!m_logConfig.m_strTimeFormat.IsEmpty())
             {
+                //TODO: 日期时间解析的代码很挫(纯粹的硬编码,使用比较好的库?)
+                // chrono::parse ? 需要 C++20 ?
+                // boost::date_time::parse_delimited_time ? 需要引入boost
+
                 SYSTEMTIME st = {0};
                 GetLocalTime(&st);  //获取年月日等信息,后面才能通过 SystemTimeToFileTime 转换
                 st.wMilliseconds = 0;  //其精度只能到毫秒, 因此设置为 0, 通过 nanoSecond(纳秒)保存及转换
@@ -960,77 +1031,78 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 int nanoSecond = 0;  //纳秒
                 int microSecond = 0; //微秒
                 int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
-                if (-1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))) //不要最后的 +08:00
+                if (-1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))
+                    || -1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS+0"))) //不要最后的 +08:00
                 {
-                    m_logConfig.m_dateTimeType = dttDateTime;
+                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
                     //2022-03-30T11:17:50.380+08:00   <== Nelo 上的时间
-                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02huT%02hu:%02hu:%02hu%*c%3d+%*c",
+                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02huT%02hu:%02hu:%02hu%*c%3d+%*c",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
                     nanoSecond = milliSecond * 1000000;
                 }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS")))
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS"))
+                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSSSSS"))
+                    )
                 {
-                    m_logConfig.m_dateTimeType = dttDateTime;
+                    m_logConfig.m_dateTimeType = dttDateTimeMicrosecond;
                     //2017-06-12 18:21:34.193000
-                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%6d",
+                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%6d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
                     nanoSecond = microSecond * 1000;
                 }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
+                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSSSSSSSS")))
                 {
-                    m_logConfig.m_dateTimeType = dttDateTime;
+                    m_logConfig.m_dateTimeType = dttDateTimeNanoSecond;
                     //2017-06-12 18:21:34.193000
-                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%9d",
+                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%9d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
                 }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS")))
+                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
+                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSS")))
                 {
-                    m_logConfig.m_dateTimeType = dttDateTime;
+                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
                     //2017-06-12 18:21:34.193
-                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu%*c%3d",
+                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%3d",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
                     microSecond = milliSecond * 1000;
                     nanoSecond = milliSecond * 1000000;
                 }
-                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))){
+                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))
+                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss"))){
                     //2017-06-12 18:21:34
-                    m_logConfig.m_dateTimeType = dttDateTime;
-                    sscanf_s(strTime.c_str(), "%04hu-%02hu-%02hu %02hu:%02hu:%02hu",
+                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
+                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu",
                         &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))){
-                    m_logConfig.m_dateTimeType = dttTime;
+                    m_logConfig.m_dateTimeType = dttTimeMilliSecond;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu",
                         &st.wHour, &st.wMinute, &st.wSecond);
                 }
                 else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
-                    m_logConfig.m_dateTimeType = dttTime;
+                    m_logConfig.m_dateTimeType = dttTimeMilliSecond;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%3d",
                         &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
                     microSecond = milliSecond * 1000;
                     nanoSecond = milliSecond * 1000000;
                 }
                 else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSS"))) {
-                    m_logConfig.m_dateTimeType = dttTime;
+                    m_logConfig.m_dateTimeType = dttTimeMicrosecond;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%6d",
                         &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
                     nanoSecond = microSecond * 1000;
                 }
                 else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSSSSS"))) {
-                    m_logConfig.m_dateTimeType = dttTime;
+                    m_logConfig.m_dateTimeType = dttTimeNanoSecond;
                     sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%9d",
                         &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
                 }
                 else{
                     FTLASSERT(FALSE);
-                }
-
-                if (m_logConfig.m_strDisplayTimeFormat.Find(TEXT("yyyy-MM-dd")) >= 0)
-                {
-                    m_logConfig.m_dateTimeType = dttDateTime;
-                }
-                else {
-                    m_logConfig.m_dateTimeType = dttTime;
+                    //FTL::FormatMessageBox(NULL, TEXT("Error"), 
+                    //    MB_OK| MB_ICONERROR, TEXT("Not support date time format"));
+                    //return LogItemPointer(NULL);
                 }
 
                 FILETIME localFileTime = {0};
@@ -1038,12 +1110,6 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
 
                 ULONGLONG fileTimeValue = *((LONGLONG*)&localFileTime);  // 表示 100 ns
                 pItem->time = fileTimeValue * 100 + nanoSecond;
-                
-                if (m_logConfig.m_dateTimeType == dttTime)
-                {
-                    //保留带日期的完整时间, 从而能正常排序, 显示时进行处理
-                    //pItem->time %= MIN_TIME_WITH_DAY_INFO;
-                }
             }
         }
 

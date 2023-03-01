@@ -29,7 +29,7 @@ CLogViewerConfig::CLogViewerConfig(void)
 
     m_nItemSrcFileEx = INVLIAD_ITEM_MAP;
 
-    m_dateTimeType = dttDateTime;
+    m_dateTimeType = dttTimeMicrosecond;
     m_nMaxLineLength = 4096;
 }
 
@@ -46,7 +46,6 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
         m_config.GetString(SECTION_COMMON, KEY_REGULAR, DEFAULT_NULL_VALUE, m_strLogRegular);
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
-        m_config.GetString(SECTION_COMMON, KEY_DISPLAY_TIMEFORMAT, m_strTimeFormat, m_strDisplayTimeFormat);
         m_nMaxLineLength = (INT)m_config.GetInt(SECTION_COMMON, MAX_LINE_LENGTH, m_nMaxLineLength);
 
         m_config.GetString(SECTION_COMMON, KEY_SRC_REGULAR, DEFAULT_NULL_VALUE, m_strSrcRegular);

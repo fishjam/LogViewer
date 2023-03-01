@@ -144,6 +144,16 @@ BEGIN
     BEGIN
         MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+        MENUITEM SEPARATOR
+        POPUP "DateTime Display"
+        BEGIN
+            MENUITEM "DateTime Milli Second",       ID_DATE_TIME_MILLI_SECOND
+            MENUITEM "DateTime MicroSecond",        ID_DATE_TIME_MICRO_SECOND
+            MENUITEM "DateTime Nano Second",        ID_DATE_TIME_NANO_SECOND
+            MENUITEM "Time Milli Second",           ID_TIME_MILLI_SECOND
+            MENUITEM "Time Micro Second",           ID_TIME_MICRO_SECOND
+            MENUITEM "Time Nano Second",            ID_TIME_NANO_SECOND
+        END
     END
     POPUP "Tools"
     BEGIN

@@ -30,6 +30,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_COMMAND_RANGE(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END, &CMainFrame::OnSettingConfigIniChange)
     ON_COMMAND_RANGE(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, &CMainFrame::OnCodePageChange)
     ON_COMMAND_RANGE(ID_TOOLS_STATISTICS_FILEPOS, ID_TOOLS_STATISTICS_TRACEINFO, &CMainFrame::OnToolsStatistics)
+    ON_COMMAND_RANGE(ID_DATE_TIME_MILLI_SECOND, ID_TIME_NANO_SECOND, &CMainFrame::OnDisplayTimeFormatSelected)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -51,6 +52,7 @@ static UINT indicators[] =
 CMainFrame::CMainFrame()
 {
     // TODO: add member initialization code here
+    ZeroMemory(m_szModulePath, _countof(m_szModulePath));
 }
 
 CMainFrame::~CMainFrame()
@@ -292,6 +294,19 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
         ((CLogViewerDoc*)GetActiveDocument())->UpdateAllViews(NULL);
     }
     //CFrameWnd::OnDropFiles(hDropInfo);
+}
+
+void CMainFrame::OnDisplayTimeFormatSelected(UINT nID)
+{
+    BOOL bRet = FALSE;
+    DateTimeType dateTimeType = (DateTimeType)(nID - ID_DATE_TIME_MILLI_SECOND);
+    FTLTRACE(TEXT("OnDisplayTimeFormatSelected, index=%d"), dateTimeType);
+
+    GetMenu()->CheckMenuRadioItem(ID_DATE_TIME_MILLI_SECOND, ID_TIME_NANO_SECOND, nID,
+        MF_BYCOMMAND | MF_CHECKED);
+
+    ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.SetDisplayTimeType(dateTimeType);
+    ((CLogViewerDoc*)GetActiveDocument())->UpdateAllViews(NULL);
 }
 
 //检查是否有遗漏的日志 -- 如果有,说明因为某些原因(比如 模块过滤/等级过滤/程序bug?),造成日志文件中的记录不全,通常需要检查原因

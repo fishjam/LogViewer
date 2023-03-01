@@ -10,7 +10,6 @@
 #define KEY_ITEM_SRC_FILE       TEXT("ITEM_SRC_FILE")
 
 #define KEY_TIMEFORMAT          TEXT("TIME_FORMAT")
-#define KEY_DISPLAY_TIMEFORMAT  TEXT("DISPLAY_TIME_FORMAT")
 #define KEY_SOURCE_FILE_EXTS    TEXT("SOURCE_FILES_EXT")
 
 #define MAX_LINE_LENGTH         TEXT("MAX_LINE_LENGTH")
@@ -37,8 +36,14 @@
 #define INVLIAD_ITEM_MAP        (-1)
 
 enum DateTimeType{
-    dttDateTime,
-    dttTime,
+    dttDateTimeMilliSecond,
+    dttDateTimeMicrosecond,
+    dttDateTimeNanoSecond,
+    dttDateTimeLast = dttDateTimeNanoSecond,
+
+    dttTimeMilliSecond,
+    dttTimeMicrosecond,
+    dttTimeNanoSecond,
 };
 
 typedef std::set<std::string> LevelsTextContainer;
@@ -62,7 +67,6 @@ public:
     CString         m_strSrcRegular;  //有可能文件需要正则表达式进行二次解析
     CString         m_strSourceFileExts;
     CString         m_strTimeFormat;
-    CString         m_strDisplayTimeFormat;
     DateTimeType    m_dateTimeType;
 
     INT m_nMaxLineLength;        //每行的最大长度,超过的话，就裁剪

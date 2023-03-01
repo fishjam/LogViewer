@@ -10,7 +10,8 @@
 #define IDC_CODE_PAGE_BEGIN			 ID_CODE_PAGE_UTF8
 #define IDC_CODE_PAGE_END            ID_CODE_PAGE_KOREAN
 
-#define MENU_INDEX_CODEPAGE          3
+#define MENU_INDEX_VIEW              2
+#define MENU_INDEX_CODEPAGE          4
 
 class CMainFrame : public CFrameWnd
     , public FTL::IFileFindCallback
@@ -62,6 +63,7 @@ public:
     afx_msg void OnUpdateIndicatorThreadCount(CCmdUI* pCmdUI);
     afx_msg void OnUpdateIndicatorLogItemCount(CCmdUI *pCmdUI);
     afx_msg void OnDropFiles(HDROP hDropInfo);
+    afx_msg void OnDisplayTimeFormatSelected(UINT nID);
     afx_msg void OnSettingConfigIniChange(UINT nID);
     afx_msg void OnCodePageChange(UINT nID);
     afx_msg BOOL OnToolsCheckMissingSeqNumber(UINT nID);

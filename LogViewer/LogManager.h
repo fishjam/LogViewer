@@ -104,6 +104,7 @@ public:
     const LogItemPointer GetDisplayLogItem(LONG index) const;
     BOOL TryReparseRealFileName(CString& strFileName);
     CString FormatDateTime(ULONGLONG time, DateTimeType dtType);
+    CString FormatElapseTime(ULONGLONG elapseTime, DateTimeType dtType);
 
     BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
@@ -129,6 +130,7 @@ public:
 
     BOOL DoFilterLogItems();
     void SetCodepage(UINT codepage){ m_codePage = codepage; }
+    void SetDisplayTimeType(DateTimeType dateTimeType);
     BOOL SetFilterLineNumber(LONG nStartLineNumber, LONG nEndLineNumber);
     BOOL SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType);
     CLogViewerConfig    m_logConfig;
