@@ -45,6 +45,8 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
     {
         m_config.GetString(SECTION_COMMON, KEY_REGULAR, DEFAULT_NULL_VALUE, m_strLogRegular);
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
+        m_config.GetString(SECTION_COMMON, KEY_OPEN_COMMAND, DEFAULT_NULL_VALUE, m_strOpenCommand);
+
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
         m_nMaxLineLength = (INT)m_config.GetInt(SECTION_COMMON, MAX_LINE_LENGTH, m_nMaxLineLength);
 

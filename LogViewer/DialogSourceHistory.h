@@ -11,7 +11,7 @@ class CDialogSourceHistory : public CDialog
 public:
 	CDialogSourceHistory(CWnd* pParent = NULL);   // standard constructor
 	virtual ~CDialogSourceHistory();
-    CString GetSelectPath();
+    const CStringArray& GetSelectPaths() const;
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DIALOG_SOURCE_HISTORY };
@@ -24,10 +24,9 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnBnClickedBtnChooseSrcPath();
+    afx_msg void OnBnClickedBtnAddSrcPath();
+    afx_msg void OnBnClickedBtnDelSrcPath();
 protected:
-    CComboBox m_cmbSrcPathHistory;
-    CString   m_strSelectPath;
-    //int _findMatchPathIndex(const CAtlString& strCurPath, BOOL bRemove = FALSE);
-    //void _removeSpecialPath(const CAtlString& strPath);
+    CStringArray m_selectedPaths;
+    CCheckListBox m_listSourcePaths;
 };

@@ -21,15 +21,15 @@ CDialogSourceHistory::~CDialogSourceHistory()
 {
 }
 
-CString CDialogSourceHistory::GetSelectPath()
+const CStringArray& CDialogSourceHistory::GetSelectPaths() const
 {
-    return m_strSelectPath;
+    return m_selectedPaths;
 }
 
 void CDialogSourceHistory::DoDataExchange(CDataExchange* pDX)
 {
     CDialog::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_COMBO_SRC_PATH_HISTORY, m_cmbSrcPathHistory);
+    DDX_Control(pDX, IDC_LIST_SRC_PATHS, m_listSourcePaths);
 }
 
 BOOL CDialogSourceHistory::OnInitDialog()
@@ -37,34 +37,29 @@ BOOL CDialogSourceHistory::OnInitDialog()
     BOOL bRet = FALSE;
     API_VERIFY(UpdateData(FALSE));
 
-    CAtlString strChooseSourceDir = AfxGetApp()->GetProfileStringW(SECTION_CONFIG, ENTRY_SOURCE_DIR);
     CAtlString strSourcesHistory = AfxGetApp()->GetProfileStringW(SECTION_CONFIG, ENTRY_SOURCES_HISTORY);
 
     std::list<CAtlString> listSourceDirHistory;
     FTL::Split(strSourcesHistory, TEXT(";"), false, listSourceDirHistory);
 
-    int preSelectIndex = -1;
-    int curSourceIndex = 0;
     for (std::list<CAtlString>::iterator iter = listSourceDirHistory.begin();
         iter != listSourceDirHistory.end();
         ++iter)
     {
-        m_cmbSrcPathHistory.AddString(*iter);
-        if (strChooseSourceDir.CompareNoCase(*iter) == 0)
-        {
-            preSelectIndex = curSourceIndex;
+        CAtlString strSrcWithStatus = *iter;
+        std::list<CAtlString> listSrcWithSelectStatus;
+        FTL::Split(strSrcWithStatus, TEXT("|"), false, listSrcWithSelectStatus);
+        if (listSrcWithSelectStatus.size() == 2) {
+            //新版本数据, 格式为: 路径|状态
+            int nIndex = m_listSourcePaths.AddString(*listSrcWithSelectStatus.begin());
+            CAtlString strStatus = *listSrcWithSelectStatus.rbegin();
+            int nCheck = StrToInt(strStatus);
+            m_listSourcePaths.SetCheck(nIndex, nCheck);
         }
-        curSourceIndex++;
-    }
-    if (preSelectIndex != -1)
-    {
-        m_cmbSrcPathHistory.SetCurSel(preSelectIndex);
-    }
-    
-    if (m_cmbSrcPathHistory.GetCurSel() == -1 && !strChooseSourceDir.IsEmpty())
-    {
-        m_cmbSrcPathHistory.AddString(strChooseSourceDir);
-        m_cmbSrcPathHistory.SetCurSel(0);
+        else {
+            //老版本数据,没有选择状态
+            m_listSourcePaths.AddString(*iter);
+        }
     }
     return TRUE;
 }
@@ -72,106 +67,66 @@ BOOL CDialogSourceHistory::OnInitDialog()
 void CDialogSourceHistory::OnOK()
 {
     BOOL bRet = FALSE;
-    int curSelIndex = m_cmbSrcPathHistory.GetCurSel();
-    if (curSelIndex != -1)
-    {
-        //获取当前选择的
-        m_cmbSrcPathHistory.GetLBText(curSelIndex, m_strSelectPath);
-    }
-
-    CString strSourceHistory;
     BOOL isFirst = TRUE;
-    for (int i = 0; i < m_cmbSrcPathHistory.GetCount(); i++)
-    {
-        CString strCurText;
-        m_cmbSrcPathHistory.GetLBText(i, strCurText);
+    CString strSourcePaths;
+    m_selectedPaths.RemoveAll();
+
+    for (int index = 0; index < m_listSourcePaths.GetCount(); index++) {
+        CString strPath;
+        int nCheck = m_listSourcePaths.GetCheck(index);
+        m_listSourcePaths.GetText(index, strPath);
+
+        if (nCheck > 0) {
+            m_selectedPaths.Add(strPath);
+        }
         if (isFirst)
         {
-            strSourceHistory.AppendFormat(TEXT("%s"), strCurText);
+            strSourcePaths.AppendFormat(TEXT("%s|%d"), strPath, nCheck);
             isFirst = FALSE;
         }
         else {
-            strSourceHistory.AppendFormat(TEXT(";%s"), strCurText);
+            strSourcePaths.AppendFormat(TEXT(";%s|%d"), strPath, nCheck);
         }
     }
-    AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCES_HISTORY, strSourceHistory);
+   
+    AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCES_HISTORY, strSourcePaths);
     __super::OnOK();
 }
 
 BEGIN_MESSAGE_MAP(CDialogSourceHistory, CDialog)
-    ON_BN_CLICKED(IDC_BTN_CHOOSE_SRC_PATH, &CDialogSourceHistory::OnBnClickedBtnChooseSrcPath)
+    ON_BN_CLICKED(IDC_BTN_ADD_SRC_PATH, &CDialogSourceHistory::OnBnClickedBtnAddSrcPath)
+    ON_BN_CLICKED(IDC_BTN_DEL_SRC_PATH, &CDialogSourceHistory::OnBnClickedBtnDelSrcPath)
 END_MESSAGE_MAP()
 
 
-// CDialogSourceHistory message handlers
-
-
-void CDialogSourceHistory::OnBnClickedBtnChooseSrcPath()
+void CDialogSourceHistory::OnBnClickedBtnAddSrcPath()
 {
-    CString strChooseSourceDir;
-    int nCurSel = m_cmbSrcPathHistory.GetCurSel();
-    if (-1 != nCurSel)
-    {
-        m_cmbSrcPathHistory.GetLBText(nCurSel, strChooseSourceDir);
+    CString strSelectPath;
+    int nSelectIndex = m_listSourcePaths.GetCurSel();
+    if (nSelectIndex > -1) {
+        m_listSourcePaths.GetText(nSelectIndex, strSelectPath);
     }
-
-    FTL::CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strChooseSourceDir);
+    
+    FTL::CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strSelectPath);
     if (dirBrowser.DoModal())
     {
         CString strFolderPath = dirBrowser.GetSelectPath();
 
-        //查找,并删除,后续重新插入(更改顺序)
-        int matchIndex = m_cmbSrcPathHistory.FindString(0, strFolderPath);
-
-        //int matchIndex = _findMatchPathIndex(strFolderPath, TRUE);
-        if (matchIndex != -1)
+        int matchIndex = m_listSourcePaths.FindString(0, strFolderPath);
+        if (-1 == matchIndex)
         {
-            m_cmbSrcPathHistory.DeleteString(matchIndex);
+            //没有才插入
+            int nIndex = m_listSourcePaths.AddString(strFolderPath);
+            m_listSourcePaths.SetCheck(nIndex, 1);
         }
-        else if (m_cmbSrcPathHistory.GetCount() >= SOURCES_HISTORY_COUNT)
-        {
-            //新的,检测个数,如果太多, 则删除老的
-            m_cmbSrcPathHistory.DeleteString(m_cmbSrcPathHistory.GetCount() - 1);
-        }
-        int nIndex = m_cmbSrcPathHistory.AddString(strFolderPath);
-        m_cmbSrcPathHistory.SetCurSel(nIndex);
     }
 }
 
-// int CDialogSourceHistory::_findMatchPathIndex(const CAtlString& strCurPath, BOOL bRemove /* = TRUE */)
-// {
-//     int matchIndex = -1;
-//     int curSourceIndex = 0;
-// 
-//     for (std::list<CAtlString>::iterator iter = m_listSourceDirHistory.begin();
-//         iter != m_listSourceDirHistory.end();
-//         ++iter)
-//     {
-//         if (strCurPath.CompareNoCase(*iter) == 0)
-//         {
-//             matchIndex = curSourceIndex;
-//             if (bRemove)
-//             {
-//                 m_listSourceDirHistory.erase(iter);
-//             }
-//             break;
-//         }
-//         curSourceIndex++;
-//     }
-//     
-//     return matchIndex;
-// }
-// 
-// void CDialogSourceHistory::_removeSpecialPath(const CAtlString& strPath)
-// {
-//     for (std::list<CAtlString>::iterator iter = m_listSourceDirHistory.begin();
-//         iter != m_listSourceDirHistory.end();
-//         ++iter)
-//     {
-//         if (strPath.CompareNoCase(*iter))
-//         {
-//             m_listSourceDirHistory.erase(iter);
-//             break;
-//         }
-//     }
-// }
+
+void CDialogSourceHistory::OnBnClickedBtnDelSrcPath()
+{
+    int nSelectedIndex = m_listSourcePaths.GetCurSel();
+    if (-1 != nSelectedIndex) {
+        m_listSourcePaths.DeleteString(nSelectedIndex);
+    }
+}

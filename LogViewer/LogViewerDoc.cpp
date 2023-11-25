@@ -233,11 +233,14 @@ void CLogViewerDoc::OnFileReload()
 BOOL CLogViewerDoc::GoToLineInSourceCode(LPCTSTR pszFileName,int line)
 {
     HRESULT hr = E_FAIL;
-    _SelectActiveIde();
 
-    if (m_VSIdeHandler.HadSelectedActiveIDE())
-    {
-        COM_VERIFY(m_VSIdeHandler.GoToLineInSourceCode(pszFileName,line));
+    if (!m_FTLogManager.TryOpenByTool(pszFileName, line)) {
+
+        _SelectActiveIde();
+        if (m_VSIdeHandler.HadSelectedActiveIDE())
+        {
+            COM_VERIFY(m_VSIdeHandler.GoToLineInSourceCode(pszFileName, line));
+        }
     }
     return TRUE;
 }

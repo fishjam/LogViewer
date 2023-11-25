@@ -138,12 +138,12 @@ public:
     BOOL NeedScanSourceFiles() {
         return m_filesMap.empty();
     }
-    BOOL ScanSourceFiles(const CString& strFolderPath);
+    BOOL ScanSourceFiles(const CStringArray& selectedPaths);
     SameNameFilePathListPtr FindFileFullPath(const CString& strFileName);
 	VOID ClearUserFullPathCache();
 	VOID SetFullPathForUserCache(const CString& strFileLineCache, const CString& strFullPathUserSelect);
 	CString GetFullPathFromUserCache(const CString& strFileLineCache);
-
+    BOOL TryOpenByTool(LPCTSTR pszFileName, int line);
 
     //当 SeqNumber 不为 -1 时，检查是否有遗漏的(用于检查 ftl log 是否有丢失的情况)
     //  outMissingLineList 和 outRevertLineList 保存的是缺失 SeqNumber 时的行(从而可以 Goto)

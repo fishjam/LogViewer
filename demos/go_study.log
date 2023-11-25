@@ -1,0 +1,7 @@
+2023-11-25T18:20:30.107 [ prof/pprof_test.go:22 ][8472][6][INFO] cpu profile will be saved into file cpu.pprof
+2023-11-25T18:23:47.498 [ basic/chan_test.go:77 ][8468][7][INFO] len(ch)=1
+2023-11-25T18:23:47.516 [ basic/chan_test.go:58 ][8468][10][INFO] read val: 0 in goid:10
+2023-11-25T18:23:47.517 [ basic/chan_test.go:108 ][8468][9][INFO] before wg.Wait
+2023-11-25T18:23:47.517 [ chan_test.go:58 ][8468][20][INFO] read val: 9 in goid:20
+2023-11-25T18:23:47.517 [ chan_test.go:58 ][8468][13][INFO] read val: 3 in goid:13
+2023-11-25T18:23:47.517 [ chan_test.go:58 ][8468][11][INFO] read val: 1 in goid:11

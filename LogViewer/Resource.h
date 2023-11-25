@@ -28,6 +28,9 @@
 #define IDC_LIST_SAME_FILES             1015
 #define IDC_COMBO_SRC_PATH_HISTORY      1016
 #define IDC_BTN_CHOOSE_SRC_PATH         1017
+#define IDC_LIST_SRC_PATHS              1019
+#define IDC_BTN_ADD_SRC_PATH            1020
+#define IDC_BTN_DEL_SRC_PATH            1021
 #define ID_THREAD_SELECTALL             32773
 #define ID_THREAD_UNSELECTALL           32774
 #define ID_TOOLS_HIGHLIGHTSAMETHREAD    32777
@@ -64,6 +67,7 @@
 #define ID_TIME_MILLI_SECOND            32831
 #define ID_TIME_MICRO_SECOND            32832
 #define ID_TIME_NANO_SECOND             32833
+#define ID_EDIT_SET_SRC_PATHS           32834
 #define ID_INDICATOR_FILE_COUNT         59142
 #define ID_INDICATOR_PROCESS_COUNT      59143
 #define ID_INDICATOR_THREAD_COUNT       59144
@@ -75,8 +79,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        137
-#define _APS_NEXT_COMMAND_VALUE         32834
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_COMMAND_VALUE         32835
+#define _APS_NEXT_CONTROL_VALUE         1022
 #define _APS_NEXT_SYMED_VALUE           104
 #endif
 #endif

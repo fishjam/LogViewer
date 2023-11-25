@@ -836,12 +836,17 @@ FileFindResultHandle CLogManager::OnError(LPCTSTR pszFilePath, DWORD dwError, LP
     return rhContinue;
 }
 
-BOOL CLogManager::ScanSourceFiles(const CString& strFolderPath)
+BOOL CLogManager::ScanSourceFiles(const CStringArray& selectedPaths)
 {
-    BOOL bRet = FALSE;
+    BOOL bRet = TRUE;
     FTL::CFFileFinder fileFinder;
     fileFinder.SetCallback(this, this);
-    API_VERIFY(fileFinder.Find(strFolderPath, m_logConfig.m_strSourceFileExts, TRUE));
+
+    INT_PTR nCount = selectedPaths.GetCount();
+    for (INT_PTR index = 0; bRet && index < nCount; index++)
+    {
+        API_VERIFY(fileFinder.Find(selectedPaths[index], m_logConfig.m_strSourceFileExts, TRUE));
+    }
     return bRet;
 }
 
@@ -872,6 +877,34 @@ CString CLogManager::GetFullPathFromUserCache(const CString& strFileLineCache)
 		return iter->second;
 	}
 	return TEXT("");
+}
+
+BOOL CLogManager::TryOpenByTool(LPCTSTR pszFileName, int line)
+{
+    BOOL bRet = FALSE;
+    if( !m_logConfig.m_strOpenCommand.IsEmpty()) {
+        //处理路径有空格的情况
+        TCHAR szPath[MAX_PATH] = { 0 };
+        StringCchCopy(szPath, _countof(szPath), pszFileName);
+        PathQuoteSpaces(szPath);
+
+        CString strCommand = m_logConfig.m_strOpenCommand;
+        CString strLine;
+        strLine.Format(TEXT("%d"), line);
+        strCommand.Replace(TEXT("$ITEM_LINE"), strLine);
+        strCommand.Replace(TEXT("$ITEM_FILE"), szPath);
+
+        FTLTRACE(TEXT("try open with command: %s"), strCommand);
+        //  goland64.exe --line 42 C:\MyProject\main.go
+        STARTUPINFO startupInfo = {0};
+        startupInfo.cb = sizeof(startupInfo);
+        PROCESS_INFORMATION processInfo = {0};
+        API_VERIFY(::CreateProcess(NULL, (LPTSTR)(LPCTSTR)strCommand, NULL, NULL, FALSE, 0, NULL, NULL, 
+            &startupInfo, &processInfo));
+        SAFE_CLOSE_HANDLE(processInfo.hProcess, NULL);
+        SAFE_CLOSE_HANDLE(processInfo.hThread, NULL);
+    }
+    return bRet;
 }
 
 LONG CLogManager::CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogIndexContainer* pOutReverseLineList, LONG maxCount)
@@ -1031,8 +1064,11 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
                 int nanoSecond = 0;  //纳秒
                 int microSecond = 0; //微秒
                 int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
-                if (-1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))
-                    || -1 != m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS+0"))) //不要最后的 +08:00
+                if (0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))
+					|| 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS"))
+                    || 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS+0"))
+					|| 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS"))
+					) //不要最后的 +08:00
                 {
                     m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
                     //2022-03-30T11:17:50.380+08:00   <== Nelo 上的时间

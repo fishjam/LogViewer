@@ -12,6 +12,11 @@
 #define KEY_TIMEFORMAT          TEXT("TIME_FORMAT")
 #define KEY_SOURCE_FILE_EXTS    TEXT("SOURCE_FILES_EXT")
 
+//example:
+//  GoLand:   OPEN_COMMAND=D:\GoLand\bin\goland64.exe --line $ITEM_LINE $ITEM_FILE
+//  EmEditor: OPEN_COMMAND=D:\EmEditor\EmEditor.exe /l $ITEM_LINE $ITEM_FILE 
+#define KEY_OPEN_COMMAND        TEXT("OPEN_COMMAND")
+
 #define MAX_LINE_LENGTH         TEXT("MAX_LINE_LENGTH")
 
 #define KEY_ITEM_SEQNUM         TEXT("ITEM_SEQNUM")
@@ -66,6 +71,7 @@ public:
     CString         m_strLogRegular;
     CString         m_strSrcRegular;  //有可能文件需要正则表达式进行二次解析
     CString         m_strSourceFileExts;
+    CString         m_strOpenCommand;
     CString         m_strTimeFormat;
     DateTimeType    m_dateTimeType;
 

@@ -1167,7 +1167,7 @@ namespace FTL
 
             CAtlString strRealFindPath(strFindPath);  //增加了 扩展名和 LongPath 处理,已经不是原始的路径
 
-            if (1 == m_FindFilters.size())
+            if (1 == m_FindFilters.size() && !bRecursive)
             {
                 strRealFindPath.Append(m_strFilter);
             }

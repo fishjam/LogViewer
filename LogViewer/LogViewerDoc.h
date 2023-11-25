@@ -12,7 +12,6 @@
 #define SECTION_CONFIG          TEXT("Config")
 #define ENTRY_ACTIVE_INI        TEXT("ActiveIni")
 #define ENTRY_TIME_FORMAT       TEXT("TimeFormat")
-#define ENTRY_SOURCE_DIR        TEXT("SourceDir")
 #define ENTRY_SOURCES_HISTORY   TEXT("SourcesHistory")
 
 #define SOURCES_HISTORY_COUNT   5

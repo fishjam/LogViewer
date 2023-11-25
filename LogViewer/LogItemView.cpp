@@ -65,6 +65,7 @@ CLogItemView::~CLogItemView()
 BEGIN_MESSAGE_MAP(CLogItemView, CListView)
 	ON_COMMAND_EX(ID_EDIT_GOTO, &CLogItemView::OnEditGoTo)
 	ON_COMMAND_EX(ID_EDIT_CLEAR_CACHE, &CLogItemView::OnEditClearCache)
+    ON_COMMAND_EX(ID_EDIT_SET_SRC_PATHS, &CLogItemView::OnEditSetSrcPaths)
 	ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
     //ON_NOTIFY_RANGE(LVN_COLUMNCLICK,0,0xffff,OnColumnClick)
     //ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
@@ -506,9 +507,8 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 						//CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strExistSourceDir);
 						if (dlgSourceHistory.DoModal())
 						{
-							CString strFolderPath = dlgSourceHistory.GetSelectPath();
-							AfxGetApp()->WriteProfileString(SECTION_CONFIG, ENTRY_SOURCE_DIR, strFolderPath);
-							rLogManager.ScanSourceFiles(strFolderPath);
+                            const CStringArray& selectedPaths = dlgSourceHistory.GetSelectPaths();
+							rLogManager.ScanSourceFiles(selectedPaths);
 						}
 					}
 
@@ -1009,13 +1009,14 @@ BOOL CLogItemView::_GotoSpecialLine(UINT nGotoLineNumber)
 
     FTLTRACE(TEXT("try got %d, real %d, item index=%d"),
         nGotoLineNumber, nClosestItemLineNum, nClosestItem);
+	if (nClosestItem > 0) {
+		API_VERIFY(ListCtrl.EnsureVisible(nClosestItem, TRUE));
+		ListCtrl.SetItemState(nClosestItem, LVIS_SELECTED, LVIS_SELECTED);
+		ListCtrl.SetSelectionMark(nClosestItem);
+	}
+	Invalidate();
 
-    API_VERIFY(ListCtrl.EnsureVisible(nClosestItem, TRUE));
-    ListCtrl.SetItemState(nClosestItem, LVIS_SELECTED, LVIS_SELECTED);
-    ListCtrl.SetSelectionMark(nClosestItem);
-
-    Invalidate();
-    return bRet;
+	return bRet;
 }
 
 BOOL CLogItemView::OnEditGoTo(UINT nID)
@@ -1037,7 +1038,19 @@ BOOL CLogItemView::OnEditGoTo(UINT nID)
 
 BOOL CLogItemView::OnEditClearCache(UINT nID)
 {
-	CLogManager& logManager = GetDocument()->m_FTLogManager;
-	logManager.ClearUserFullPathCache();
+	CLogManager& rLogManager = GetDocument()->m_FTLogManager;
+    rLogManager.ClearUserFullPathCache();
 	return TRUE;
+}
+
+BOOL CLogItemView::OnEditSetSrcPaths(UINT nID) 
+{
+    CLogManager& rLogManager = GetDocument()->m_FTLogManager;
+    CDialogSourceHistory dlgSourceHistory(this);
+    if (dlgSourceHistory.DoModal())
+    {
+        const CStringArray& selectedPaths = dlgSourceHistory.GetSelectPaths();
+        //rLogManager.ScanSourceFiles(strFolderPath);
+    }
+    return TRUE;
 }
