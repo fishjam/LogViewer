@@ -15,6 +15,7 @@
     - TIME_FORMAT : 定义了时间部分的格式, 目前只支持 yyyy-MM-dd HH:mm:ss.SSS 等四种格式, 配置好以后可以自动计算同一线程中前后两条日志的时间差(Elapse)
     - DISPLAY_TIME_FORMAT: 定义日期时间的显示格式,默认和 TIME_FORMAT 一致,但考虑到原始格式是日期+时间,但分析时只想显示时间,因此增加了该配置. 目前只支持 yyyy-MM-dd HH:mm:ss.SSS 或 HH:mm:ss.SSS 
     - SOURCE_FILES_EXT: 在双击定位源码时, 如果文件路径是相对路径(如 C++ Release)时,会提示用户选择源码的根目录, 并在其下自动搜索指定扩展名的源码, 然后通过文件名匹配. 示例: *.cpp;*.c;*.h;*.hpp
+    - OPEN_COMMAND: 在双击定位源码时,可以在自定义的 IDE 中打开并定位, 示例: [Open *.fo file in goland](x64/Release/GoLang.ini#L11)
   - 3.REGMAP : 定义了正则解析出的各个分组对应日志的哪个部分, 如 ITEM_LEVEL 对应日志等级部分.
   - 4.LEVELMAP: 定义了日志等级的对应方式, 如 LEVEL_TRACE=INFO 表示日志中的 "INFO" 对应 LogViewer 中的 "Trace" 等级的日志, 可通过其进行过滤.
 
