@@ -6,6 +6,7 @@
 
 
 #define KEY_REGULAR             TEXT("REGULAR")
+#define KEY_REGULAR_2           TEXT("REGULAR_2")
 #define KEY_SRC_REGULAR         TEXT("SRC_REGULAR")
 #define KEY_ITEM_SRC_FILE       TEXT("ITEM_SRC_FILE")
 
@@ -30,6 +31,11 @@
 #define KEY_ITEM_FILE           TEXT("ITEM_FILE")
 #define KEY_ITEM_LINE           TEXT("ITEM_LINE")
 #define KEY_ITEM_LOG            TEXT("ITEM_LOG")
+
+// for call stack
+#define KEY_ITEM_FILE_2           TEXT("ITEM_FILE_2")
+#define KEY_ITEM_LINE_2           TEXT("ITEM_LINE_2")
+
 
 #define KEY_LEVEL_DETAIL        TEXT("LEVEL_DETAIL")
 #define KEY_LEVEL_INFO          TEXT("LEVEL_INFO")
@@ -68,7 +74,9 @@ private:
     INT	_ConvertItemMapValue(const CString& strItemValue);
 public:
     CFConfigIniFile m_config;
-    CString         m_strLogRegular;
+    CString         m_strLogRegular;  //分析正常日志时的正则
+	CString         m_strLogRegular_2; //分析 Go/Java 等调用堆栈时的正则
+
     CString         m_strSrcRegular;  //有可能文件需要正则表达式进行二次解析
     CString         m_strSourceFileExts;
     CString         m_strOpenCommand;
@@ -87,7 +95,12 @@ public:
     INT m_nItemFun;
     INT m_nItemFile;
     INT m_nItemLine;
-    INT m_nItemLog;
+
+	//用于分析 Go/Java 等调用堆栈时的 文件路径+行号
+	INT m_nItemFile_2;
+	INT m_nItemLine_2;
+
+	INT m_nItemLog;
 
     //二次分析时中的源文件路径(针对 mybox 这种程序进行的特化)
     INT m_nItemSrcFileEx;

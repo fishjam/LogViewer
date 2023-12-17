@@ -44,6 +44,8 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
     if (m_config.IsIniFileExist())
     {
         m_config.GetString(SECTION_COMMON, KEY_REGULAR, DEFAULT_NULL_VALUE, m_strLogRegular);
+		m_config.GetString(SECTION_COMMON, KEY_REGULAR_2, DEFAULT_NULL_VALUE, m_strLogRegular_2);
+
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_OPEN_COMMAND, DEFAULT_NULL_VALUE, m_strOpenCommand);
 
@@ -99,12 +101,25 @@ BOOL CLogViewerConfig::_LoadItemMaps()
         { KEY_ITEM_LOG, &m_nItemLog},
     };
 
+	ItemMapInfo itemMapInfos_2[] = {
+		{ KEY_ITEM_FILE_2, &m_nItemFile_2 },
+		{ KEY_ITEM_LINE_2, &m_nItemLine_2 },
+	};
+
     CString strItemValue;
     for (int i = 0; i < _countof(itemMapInfos); i++)
     {
         m_config.GetString(SECTION_REGMAP, itemMapInfos[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue);
         *itemMapInfos[i].pItemIndex = _ConvertItemMapValue(strItemValue);
     }
+
+	for (int i = 0; i < _countof(itemMapInfos_2); i++)
+	{
+		m_config.GetString(SECTION_REGMAP, itemMapInfos_2[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue);
+		if (!strItemValue.IsEmpty()) {
+			*itemMapInfos_2[i].pItemIndex = _ConvertItemMapValue(strItemValue);
+		}
+	}
 
     return bRet;
 }

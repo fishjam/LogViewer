@@ -202,7 +202,7 @@ protected:
     //LogItemPointer ParseTraceLog(std::string& strOneLog);
     BOOL ReadTraceLogFile(LPCTSTR pszFilePath);
 
-    LogItemPointer ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem);
+    LogItemPointer ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem);
     BOOL _CalcThreadElpaseTime(LogItemArrayType& logItems, LONG& outProcessCount, LONG& outThreadCount);
     int _ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage);
     LPCTSTR _CopyItemInfo(LPCTSTR pszSource);

@@ -1033,7 +1033,7 @@ LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInf
     return topIndex;
 }
 
-LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const LogItemPointer& preLogItem)
+LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem)
 {
     BOOL bRet = FALSE;
     std::tr1::smatch regularResults;
@@ -1192,7 +1192,21 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         }
 
         return pItem;
-    }
+	} else {
+		//如果缺省的正则表达式失败, 则尝试用 REGULAR2 的字符串进行解析
+		bool result = std::tr1::regex_match(strOneLog, regularResults, reg2);
+		if (result)
+		{
+			if (m_logConfig.m_nItemFile_2 != INVLIAD_ITEM_MAP)
+			{
+				_ConvertItemInfo(std::string(regularResults[m_logConfig.m_nItemFile_2]), pItem->pszSrcFileName, m_codePage);
+			}
+			if (m_logConfig.m_nItemLine_2 != INVLIAD_ITEM_MAP)
+			{
+				pItem->srcFileline = atoi(std::string(regularResults[m_logConfig.m_nItemLine_2]).c_str());
+			}
+		}
+	}
 
     //不匹配正则表达式的情况,尽量重用上一条记录的信息
     if (preLogItem)
@@ -1212,9 +1226,9 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         //如果没有特意设置 源码分析的正则表达式, 才重用上一条记录的文件名和行号
         //if (m_logConfig.m_strSrcRegular.IsEmpty() || m_logConfig.m_nItemSrcFileEx == INVLIAD_ITEM_MAP)
         {
-            if (preLogItem->pszSrcFileName && preLogItem->srcFileline > 0)
+            if (NULL == pItem->pszSrcFileName && preLogItem->pszSrcFileName && preLogItem->srcFileline > 0)
             {
-
+				//在没有通过 REGULAR_2 找到 文件路径/行号的前提下, 才重用以前的信息
                 pItem->srcFileline = preLogItem->srcFileline;
                 pItem->pszSrcFileName = _CopyItemInfo(preLogItem->pszSrcFileName);
             }
@@ -1243,7 +1257,9 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
         DWORD dwStartTime = GetTickCount();
 
         try{
-            const std::tr1::regex regularPattern(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular));
+			const std::tr1::regex regularPattern(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular));
+
+			const std::tr1::regex regularPattern2(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular_2));  //如果字符串为空,也没有问题
 
 			//while (getline(winFile, wstrOneLog))
             while(getline(inFile, strOneLog))
@@ -1281,7 +1297,7 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                         strOneLog = strOneLog.substr(0, m_logConfig.m_nMaxLineLength);
                     }
                 }
-                LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, preLogItem);
+                LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, regularPattern2, preLogItem);
                 preLogItem = pLogItem;
                 if (pLogItem)
                 {
