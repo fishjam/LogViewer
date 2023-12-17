@@ -16,7 +16,8 @@
   - 1.Sample file [Standard-SpringBoot.ini](x64/Release/Dsh-SpringBoot.ini) , the log file is [spring log demo](demos/dsh-springdemo.log), can get logs from multi servers by [distributed shell](https://github.com/fishjam/dsh) .
   - 2.COMMON 
     - REGULAR :  defines the regular expression for a log. [Regex Match Tracer](http://www.regex-match-tracer.com/) is recommended for writing and validating RegEx.
-    - TIME_FORMAT : define the date and time format, now only support 4 format(ref sample). 
+    - TIME_FORMAT : define the date and time format, now only support 4 format(ref sample).
+    - OPEN_COMMAND: define the open source file and locate line position command in other IDE(just need support file and line), example: [Open *.go file in goland](x64/Release/GoLang.ini#L11)
   - 3.REGMAP : define the regular result and log part's correspondence. 
   - 4.LEVELMAP: define the log level's correspondence. 
 
