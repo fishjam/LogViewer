@@ -1,7 +1,7 @@
 # 中文用户请点击 [中文说明](README_CN.md)
 
 # LogViewer
-  - This is a general log viewer. It can parse the log files by providing regular expression configuration.
+  - This is a general log viewer. It can parse the log files by providing regular expression configuration or json format(ELK).
   - It supports several log format, such as spring-boot, Android, iOS, Visual studio, etc.
   -  ***Theoretically, this tool can be used to analyze any log format as long as you write regular expressions for it***.
  
@@ -19,7 +19,8 @@
     - TIME_FORMAT : define the date and time format, now only support 4 format(ref sample).
     - OPEN_COMMAND: define the open source file and locate line position command in other IDE(just need support file and line), example: [Open *.go file in goland](x64/Release/GoLang.ini#L11)
   - 3.REGMAP : define the regular result and log part's correspondence. 
-  - 4.LEVELMAP: define the log level's correspondence. 
+  - 4.LEVELMAP: define the log level's correspondence.
+  - 5.JSONMAP: used for json(refer DemoJson.ini)
 
 # Use [Regex Match Tracer](http://www.regex-match-tracer.com/) to analyze and edit regular configurations
   - 1. Refer [Standard-SpringBoot.ini](https://github.com/fishjam/LogViewer/blob/master/x64/Release/Dsh-SpringBoot.ini) and [distributed spring log demo](https://github.com/fishjam/LogViewer/blob/master/demos/dsh-springdemo.log)
