@@ -1,0 +1,25 @@
+[{
+  "@arrivedTime" : "1732102788833",
+  "CharsetName" : "UTF-8",
+  "Platform" : "Linux",
+  "host": "host1",
+  "thread":"main",
+  "body" : "body message1",
+  "logLevel" : "INFO"
+}, {
+  "@arrivedTime" : "1732102788834",
+  "CharsetName" : "UTF-8",
+  "Platform" : "Linux",
+  "host": "host2",
+  "thread":"main",
+  "body" : "body message 2",
+  "logLevel" : "WARN"
+}, {
+  "@arrivedTime" : "1732102788834",
+  "CharsetName" : "UTF-8",
+  "Platform" : "Linux",
+  "host": "host1",
+  "thread":"startStop",
+  "body" : "body message3",
+  "logLevel" : "INFO"
+}]

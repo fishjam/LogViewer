@@ -63,11 +63,9 @@
 #define ID_FILE_EXPLORER                32827
 #define ID_DATE_TIME_MILLI_SECOND       32828
 #define ID_DATE_TIME_MICRO_SECOND       32829
-#define ID_DATE_TIME_NANO_SECOND        32830
-#define ID_TIME_MILLI_SECOND            32831
-#define ID_TIME_MICRO_SECOND            32832
-#define ID_TIME_NANO_SECOND             32833
-#define ID_EDIT_SET_SRC_PATHS           32834
+#define ID_TIME_MILLI_SECOND            32830
+#define ID_TIME_MICRO_SECOND            32831
+#define ID_EDIT_SET_SRC_PATHS           32832
 #define ID_INDICATOR_FILE_COUNT         59142
 #define ID_INDICATOR_PROCESS_COUNT      59143
 #define ID_INDICATOR_THREAD_COUNT       59144
@@ -79,7 +77,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        137
-#define _APS_NEXT_COMMAND_VALUE         32835
+#define _APS_NEXT_COMMAND_VALUE         32833
 #define _APS_NEXT_CONTROL_VALUE         1022
 #define _APS_NEXT_SYMED_VALUE           104
 #endif

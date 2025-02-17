@@ -77,6 +77,12 @@ void CDialogSourceHistory::OnOK()
         m_listSourcePaths.GetText(index, strPath);
 
         if (nCheck > 0) {
+            //check folder path exist
+            if (ptFolder != FTL::CFPath::GetPathType(strPath)) {
+                FTL::FormatMessageBox(m_hWnd, TEXT("Wrong source path, please the path exist"), MB_OK | MB_ICONWARNING, TEXT("Path:%s"), strPath);
+                m_listSourcePaths.SetCurSel(index);
+                return;
+            }
             m_selectedPaths.Add(strPath);
         }
         if (isFirst)

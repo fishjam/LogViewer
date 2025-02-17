@@ -7,6 +7,14 @@
 
 #include "..\LogViewerDefine.h"
 #include "LogViewerConfig.h"
+#include "json.h"
+
+//文件类型
+enum LogFileType
+{
+    ft_Text = 0,        //普通文本格式, 用正则表达式解析
+    ft_Json             //Json 格式
+};
 
 enum LogItemContentType  //用于排序
 {
@@ -21,6 +29,7 @@ enum LogItemContentType  //用于排序
     type_ModuleName,
     type_FunName,
     type_FilePos,
+    type_TraceInfoLen,
     type_TraceInfo,
 
     type_SortCount
@@ -103,8 +112,8 @@ public:
 
     const LogItemPointer GetDisplayLogItem(LONG index) const;
     BOOL TryReparseRealFileName(CString& strFileName);
-    CString FormatDateTime(ULONGLONG time, DateTimeType dtType);
-    CString FormatElapseTime(ULONGLONG elapseTime, DateTimeType dtType);
+    CString FormatDateTime(LONGLONG time, DateTimeType dtType);
+    CString FormatElapseTime(LONGLONG elapseTime, DateTimeType dtType);
 
     BOOL DeleteItems(std::set<LONG> delItems);
     void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
@@ -124,7 +133,7 @@ public:
     //是否选中 -- 进行过滤
     BOOL IsItemIdChecked(const LogItemPointer& pItem);
 
-    void OnlySelectSpecialItems(const MachinePIdTIdType& selectIdType, ONLY_SELECT_TYPE selType);
+    void OnlySelectSpecialItems(const MachinePIdTIdTypeList& selectIdTypeList, ONLY_SELECT_TYPE selType);
 
     BOOL SetTraceLevelDisplay(TraceLevel level, BOOL bDisplay);
 
@@ -200,9 +209,15 @@ protected:
     //LogItemPointer ParseFTLLogItem(CString& strLogItem);
 
     //LogItemPointer ParseTraceLog(std::string& strOneLog);
-    BOOL ReadTraceLogFile(LPCTSTR pszFilePath);
+    LONG ReadTraceLogFile(LPCTSTR pszFilePath, LONG startLineNum);
+    LONG ReadJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum);
 
     LogItemPointer ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem);
+    LogItemPointer ParseJsonLogItem(const Json::Value& valItem, const LogItemPointer& preLogItem);
+
+    LONGLONG _parseTimeString(const std::string& strTime);
+    VOID _ConvertTimeStampMsToSystemTime(LONGLONG milliSecond, SYSTEMTIME *pST);
+
     BOOL _CalcThreadElpaseTime(LogItemArrayType& logItems, LONG& outProcessCount, LONG& outThreadCount);
     int _ConvertItemInfo(const std::string& srcInfo, LPCTSTR& pszDest, UINT codePage);
     LPCTSTR _CopyItemInfo(LPCTSTR pszSource);
@@ -210,4 +225,6 @@ protected:
     LPCTSTR _ConvertNullString(LPCTSTR pszText) {
         return pszText ? pszText : TEXT("");     //避免在 %s 对 NULL 进行 format 时输出(null) 或 crash
     }
+    BOOL _GetLogItemExportTextFormat(DWORD dwFileds, LogItemPointer& pLogItem, CString& strOutItem);
+    BOOL _GetLogItemExportJsonFormat(DWORD dwFileds, const LogItemPointer& pLogItem, Json::Value& valRoot);
 };

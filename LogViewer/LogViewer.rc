@@ -139,6 +139,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Go to\tCtrl+G",               ID_EDIT_GOTO
         MENUITEM "ClearCache",                  ID_EDIT_CLEAR_CACHE
+        MENUITEM SEPARATOR
     END
     POPUP "&View"
     BEGIN
@@ -149,10 +150,8 @@ BEGIN
         BEGIN
             MENUITEM "DateTime Milli Second",       ID_DATE_TIME_MILLI_SECOND
             MENUITEM "DateTime MicroSecond",        ID_DATE_TIME_MICRO_SECOND
-            MENUITEM "DateTime Nano Second",        ID_DATE_TIME_NANO_SECOND
             MENUITEM "Time Milli Second",           ID_TIME_MILLI_SECOND
             MENUITEM "Time Micro Second",           ID_TIME_MICRO_SECOND
-            MENUITEM "Time Nano Second",            ID_TIME_NANO_SECOND
         END
     END
     POPUP "&Options"
@@ -475,9 +474,9 @@ BEGIN
     ID_INDICATOR_SCRL       "SCRL"
     ID_INDICATOR_OVR        "OVR"
     ID_INDICATOR_REC        "REC"
-    ID_INDICATOR_FILE_COUNT "File:%d  "
-    ID_INDICATOR_PROCESS_COUNT "Process:%d"
-    ID_INDICATOR_THREAD_COUNT "Thread:%d"
+    ID_INDICATOR_FILE_COUNT "File:%d   "
+    ID_INDICATOR_PROCESS_COUNT "Process:%d   "
+    ID_INDICATOR_THREAD_COUNT "Thread:%d  "
     ID_INDICATOR_LOGITEM_COUNT "LogItem:%d        "
     ID_INDICATOR_SELECTED_LOGITEM "Selected:%d/%d      "
 END

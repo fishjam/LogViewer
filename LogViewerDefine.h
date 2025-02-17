@@ -13,6 +13,7 @@
 #define INVALID_SEQ_NUMBER          (LONG)(-1)
 //time 现在的单位是 FILETIME(100ns)
 #define TIME_RESULT_TO_MILLISECOND  (1000 * 1000 * 10)
+#define MICROSECOND_PER_SECOND      (1000 * 1000)
 #define MIN_TIME_WITH_DAY_INFO      ((LONGLONG)24 * 3600 * TIME_RESULT_TO_MILLISECOND) 
 #define DEFAULT_LOCAL_MACHINE       TEXT("local")
 
@@ -94,6 +95,9 @@ typedef std::map<MACHINE_NAME_TYPE, PidTidContainer>    MachinePidTidContainer;
 typedef MachinePidTidContainer::iterator          MachinePidTidContainerIter;
 typedef MachinePidTidContainer::const_iterator    MachinePidTidContainerConstIter;
 
+// 用于过滤用户选择的多条记录
+typedef std::list<MachinePIdTIdType>    MachinePIdTIdTypeList;
+
 //用于保存多行的行信息
 typedef std::list<int> LogIndexContainer;
 typedef LogIndexContainer::iterator LogIndexContainerIter;
@@ -106,12 +110,14 @@ struct LogItem
     LONG                moduleNameLen;      //模块名字的长度
     LONG                traceInfoLen;       //pszTraceInfo 的长度，目前必须是 pszTraceInfo 字符串长度+1(包括结尾的NULL,不浪费空间)
     LONG                srcFileline;        //在源文件中的行号
-    ULONGLONG           time;               //保存 ns(纳秒), 其值 /10 以后就是 FILETIME 对应的值(100ns）
-    ULONGLONG           elapseTime;
+    LONGLONG            time;                //保存 ns(纳秒), 其值 /10 以后就是 FILETIME 对应的值(100ns)
+    LONGLONG            elapseTime;
     MACHINE_NAME_TYPE   machine;            //机器名(一般用于dsh)
     PROCESS_ID_TYPE     processId;
     THREAD_ID_TYPE      threadId;
     FTL::TraceLevel     level;
+    std::string         orgTimeStr;         //保存原始的日期/时间字符串,主要是为了 json 输出时使用.
+    std::string         orgLevelStr;
     //HMODULE           module;
     LPCWSTR             pszFunName;
     LPCWSTR             pszModuleName;
@@ -133,6 +139,8 @@ struct LogItem
         processId = TEXT("0");
         threadId = TEXT("0");
         level = FTL::tlEnd;
+        orgTimeStr = "";
+		orgLevelStr = "";
         pszFunName = NULL;
         pszModuleName = NULL;
         pszTraceInfo = NULL;

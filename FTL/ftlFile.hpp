@@ -897,6 +897,35 @@ namespace FTL
 		return 0;   // no support
 	}
 
+  	PathType CFPath::GetPathType(LPCTSTR pszPath)
+	{
+		PathType pathType = ptUnknown;
+		DWORD dwAttrib = GetFileAttributes(pszPath);
+		if (dwAttrib != INVALID_FILE_ATTRIBUTES)
+		{
+			if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				pathType = ptFolder;
+			}
+			else {
+				pathType = ptFile;
+			}
+		}
+		else{
+            DWORD dwError = GetLastError();
+            if (ERROR_FILE_NOT_FOUND == dwError) {
+                pathType = ptNotExist;
+            }
+            else {
+                //TODO: 还有哪些错误
+                FTLASSERT(ERROR_ACCESS_DENIED == dwError);
+                
+                //ERROR_BAD_NETPATH
+            }
+        }
+
+		return pathType;
+	}
 	BOOL CFPath::CreateDirTree(LPCTSTR szPath)
 	{
 		TCHAR szDirName[MAX_PATH] = { 0 };

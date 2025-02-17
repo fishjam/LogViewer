@@ -3,8 +3,9 @@
 
 struct ItemMapInfo  
 {
-    LPCTSTR pszKeyItem;
-    INT*	pItemIndex;
+    LPCTSTR         pszKeyItem;
+    INT*            pIntItemIndex;
+    CAtlStringA*    pStrItemIndex;
 };
 
 struct LevelMapInfo
@@ -26,10 +27,11 @@ CLogViewerConfig::CLogViewerConfig(void)
     m_nItemFile = INVLIAD_ITEM_MAP;
     m_nItemLine = INVLIAD_ITEM_MAP;
     m_nItemLog = INVLIAD_ITEM_MAP;
+    m_nItemRegBody = INVLIAD_ITEM_MAP;
 
     m_nItemSrcFileEx = INVLIAD_ITEM_MAP;
 
-    m_dateTimeType = dttTimeMicrosecond;
+    m_dateTimeType = dttDateTimeNone;
     m_nMaxLineLength = 4096;
 }
 
@@ -43,8 +45,18 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
     API_VERIFY(m_config.SetFileName(pszConfigFile));
     if (m_config.IsIniFileExist())
     {
+        CString strReadOrder;
+        m_config.GetString(SECTION_COMMON, KEY_ORDER, DEFAULT_NULL_VALUE, strReadOrder);
+        if (0 == strReadOrder.CompareNoCase(TEXT("DESC")))
+        {
+            m_readItemOrder = Desc;
+        }
+        else {
+            m_readItemOrder = Asc;  //Ä¬ÈÏÉýÐò
+        }
+
         m_config.GetString(SECTION_COMMON, KEY_REGULAR, DEFAULT_NULL_VALUE, m_strLogRegular);
-		m_config.GetString(SECTION_COMMON, KEY_REGULAR_2, DEFAULT_NULL_VALUE, m_strLogRegular_2);
+        m_config.GetString(SECTION_COMMON, KEY_REGULAR_2, DEFAULT_NULL_VALUE, m_strLogRegular_2);
 
         m_config.GetString(SECTION_COMMON, KEY_SOURCE_FILE_EXTS, _T("*.*"), m_strSourceFileExts);
         m_config.GetString(SECTION_COMMON, KEY_OPEN_COMMAND, DEFAULT_NULL_VALUE, m_strOpenCommand);
@@ -88,20 +100,21 @@ BOOL CLogViewerConfig::_LoadItemMaps()
     BOOL bRet = TRUE;
 
     ItemMapInfo itemMapInfos[] = {
-        { KEY_ITEM_SEQNUM, &m_nItemSeqNum },
-        { KEY_ITEM_TIME, &m_nItemTime },
-        { KEY_ITEM_LEVEL, &m_nItemLevel},
-        { KEY_ITEM_MACHINE, &m_nItemMachine},
-        { KEY_ITEM_PID,	 &m_nItemPId},
-        { KEY_ITEM_TID,	 &m_nItemTId},
-        { KEY_ITEM_MODULE, &m_nItemModule},
-        { KEY_ITEM_FUN, &m_nItemFun},
-        { KEY_ITEM_FILE, &m_nItemFile},
-        { KEY_ITEM_LINE, &m_nItemLine},
-        { KEY_ITEM_LOG, &m_nItemLog},
+        { KEY_ITEM_SEQNUM, &m_nItemSeqNum, &m_strItemSeqNum },
+        { KEY_ITEM_TIME, &m_nItemTime, &m_strItemTime },
+        { KEY_ITEM_LEVEL, &m_nItemLevel, &m_strItemLevel },
+        { KEY_ITEM_MACHINE, &m_nItemMachine, &m_strItemMachine },
+        { KEY_ITEM_PID,	 &m_nItemPId, &m_strItemPId },
+        { KEY_ITEM_TID,	 &m_nItemTId, &m_strItemTId },
+        { KEY_ITEM_MODULE, &m_nItemModule, &m_strItemModule},
+        { KEY_ITEM_FUN, &m_nItemFun, &m_strItemFun},
+        { KEY_ITEM_FILE, &m_nItemFile, &m_strItemFile},
+        { KEY_ITEM_LINE, &m_nItemLine, &m_strItemLine},
+        { KEY_ITEM_LOG, &m_nItemLog, &m_strItemLog},
+        { KEY_ITEM_REG_BODY, &m_nItemRegBody, &m_strItemRegBody},
     };
 
-	ItemMapInfo itemMapInfos_2[] = {
+    ItemMapInfo itemMapInfos_2[] = {
 		{ KEY_ITEM_FILE_2, &m_nItemFile_2 },
 		{ KEY_ITEM_LINE_2, &m_nItemLine_2 },
 	};
@@ -109,15 +122,22 @@ BOOL CLogViewerConfig::_LoadItemMaps()
     CString strItemValue;
     for (int i = 0; i < _countof(itemMapInfos); i++)
     {
-        m_config.GetString(SECTION_REGMAP, itemMapInfos[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue);
-        *itemMapInfos[i].pItemIndex = _ConvertItemMapValue(strItemValue);
+        if (m_config.GetString(SECTION_REGMAP, itemMapInfos[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue) > 0) {
+            // regex
+            *itemMapInfos[i].pIntItemIndex = _ConvertItemMapValue(strItemValue);
+        }
+        if (m_config.GetString(SECTION_JSONMAP, itemMapInfos[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue) > 0) {
+            // json
+            CAtlStringA strV = _ConvertJsonMapValue(strItemValue);
+            *itemMapInfos[i].pStrItemIndex = strV;
+        }
     }
 
 	for (int i = 0; i < _countof(itemMapInfos_2); i++)
 	{
 		m_config.GetString(SECTION_REGMAP, itemMapInfos_2[i].pszKeyItem, DEFAULT_NULL_VALUE, strItemValue);
 		if (!strItemValue.IsEmpty()) {
-			*itemMapInfos_2[i].pItemIndex = _ConvertItemMapValue(strItemValue);
+			*itemMapInfos_2[i].pIntItemIndex = _ConvertItemMapValue(strItemValue);
 		}
 	}
 
@@ -168,4 +188,20 @@ INT CLogViewerConfig::_ConvertItemMapValue(const CString& strItemValue){
         }
     }
     return nItemValue;
+}
+
+CAtlStringA CLogViewerConfig::_ConvertJsonMapValue(const CString& strItemValue) {
+    FTL::CFConversion conv;
+    if (!strItemValue.IsEmpty())
+    {
+        if (strItemValue.GetLength() >= 2 && strItemValue[0] == _T('$'))
+        {
+            CString strSub = strItemValue.Mid(1);
+            LPCSTR pszUTF8 = (LPCSTR)conv.TCHAR_TO_UTF8((LPCTSTR)strSub);
+            CAtlStringA strUtf8 = pszUTF8;
+           
+            return strUtf8;
+        }
+    }
+    return CAtlStringA("");
 }

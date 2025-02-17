@@ -160,6 +160,9 @@ public:
                     }
                 }
                 break;
+            case type_TraceInfoLen:
+                 result = pItem1->traceInfoLen - pItem2->traceInfoLen;
+                 break;
             case type_TraceInfo:
                 if(pItem1->pszTraceInfo && pItem2->pszTraceInfo){
                     result = _tcscmp(pItem1->pszTraceInfo,pItem2->pszTraceInfo);
@@ -237,82 +240,173 @@ BOOL CLogManager::ClearAllLogItems()
     return TRUE;
 }
 
+BOOL CLogManager::_GetLogItemExportTextFormat(DWORD dwFileds, LogItemPointer& pLogItem, CString& strOutItem) {
+    //保存成 FTL Log 的格式
+    if (INVALID_SEQ_NUMBER != pLogItem->seqNum)
+    {   //完整日志
+
+        if (dwFileds & EXPORT_FIELD_MACHINE)
+        {
+            if (0 != pLogItem->machine.compare(DEFAULT_LOCAL_MACHINE))
+            {
+                strOutItem.AppendFormat(TEXT("%s|"), pLogItem->machine.c_str());
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_FILE_POS)
+        {
+            strOutItem.AppendFormat(TEXT("%s(%d):"), _ConvertNullString(pLogItem->pszSrcFileName), pLogItem->srcFileline);
+        }
+        if (dwFileds & EXPORT_FIELD_SEQ_NUM)
+        {
+            strOutItem.AppendFormat(TEXT("%d|"), pLogItem->seqNum);
+        }
+        if (dwFileds & EXPORT_FIELD_TIME)
+        {
+            strOutItem.AppendFormat(TEXT("%s|"), FormatDateTime(pLogItem->time, m_logConfig.m_dateTimeType));
+        }
+        if (dwFileds & EXPORT_FIELD_PID)
+        {
+            strOutItem.AppendFormat(TEXT("%s|"), pLogItem->processId.c_str());
+        }
+        if (dwFileds & EXPORT_FIELD_TID)
+        {
+            strOutItem.AppendFormat(TEXT("%s|"), pLogItem->threadId.c_str());
+        }
+        if (dwFileds & EXPORT_FIELD_TRACE_LEVEL)
+        {
+            strOutItem.AppendFormat(TEXT("%s|"), CFLogger::GetLevelName(pLogItem->level));
+        }
+        if (dwFileds & EXPORT_FIELD_MODULE_NAME)
+        {
+            strOutItem.AppendFormat(TEXT("%s|"), _ConvertNullString(pLogItem->pszModuleName));
+        }
+        if (dwFileds & EXPORT_FIELD_TRACE_INFO)
+        {
+            strOutItem.AppendFormat(TEXT("%s\n"), pLogItem->pszTraceInfo);
+        }
+    }
+    else {
+        //不完整日志,因此只输出 traceInfo
+        strOutItem.Format(TEXT("%s\n"), pLogItem->pszTraceInfo);
+    }
+    return TRUE;
+}
+
+BOOL CLogManager::_GetLogItemExportJsonFormat(DWORD dwFileds, const LogItemPointer& pLogItem, Json::Value& valRoot) {
+    //保存成 FTL Log 的格式
+    //if (INVALID_SEQ_NUMBER != pLogItem->seqNum)
+    {   //完整日志
+        Json::Value valItem;
+        FTL::CFConversion conv;
+        if (dwFileds & EXPORT_FIELD_MACHINE)
+        {
+            if (0 != pLogItem->machine.compare(DEFAULT_LOCAL_MACHINE) && !m_logConfig.m_strItemMachine.IsEmpty()){
+                valItem[m_logConfig.m_strItemMachine] = conv.TCHAR_TO_UTF8(pLogItem->machine.c_str());
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_FILE_POS)
+        {
+            if (!m_logConfig.m_strItemFile.IsEmpty()){
+                valItem[m_logConfig.m_strItemFile] = conv.TCHAR_TO_UTF8(_ConvertNullString(pLogItem->pszSrcFileName));
+            }
+            if (!m_logConfig.m_strItemLine.IsEmpty()) {
+                valItem[m_logConfig.m_strItemLine] = pLogItem->srcFileline;
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_SEQ_NUM)
+        {
+            if (!m_logConfig.m_strItemSeqNum.IsEmpty()) {
+                valItem[m_logConfig.m_strItemSeqNum] = pLogItem->seqNum;
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_TIME)
+        {
+            if (!m_logConfig.m_strItemTime.IsEmpty()) {
+                valItem[m_logConfig.m_strItemTime] = pLogItem->orgTimeStr;
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_PID)
+        {
+            if (!m_logConfig.m_strItemPId.IsEmpty()) {
+                valItem[m_logConfig.m_strItemPId] =
+                    conv.TCHAR_TO_UTF8(pLogItem->processId.c_str());
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_TID)
+        {
+            if (!m_logConfig.m_strItemTId.IsEmpty()) {
+                valItem[m_logConfig.m_strItemTId] =
+                    conv.TCHAR_TO_UTF8(pLogItem->threadId.c_str());
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_TRACE_LEVEL)
+        {
+            if (!m_logConfig.m_strItemLevel.IsEmpty()) {
+                valItem[m_logConfig.m_strItemLevel] = pLogItem->orgLevelStr;
+            }
+        }
+        if (dwFileds & EXPORT_FIELD_MODULE_NAME)
+        {
+            if (!m_logConfig.m_strItemModule.IsEmpty()) {
+                valItem[m_logConfig.m_strItemModule] =
+                    conv.TCHAR_TO_UTF8(_ConvertNullString(pLogItem->pszModuleName));
+            }
+        }
+
+        if (dwFileds & EXPORT_FIELD_TRACE_INFO && !m_logConfig.m_strItemLog.IsEmpty())
+        {
+            valItem[m_logConfig.m_strItemLog] = conv.TCHAR_TO_UTF8(pLogItem->pszTraceInfo);
+        }
+        valRoot.append(valItem);
+    }
+    return TRUE;
+}
+
 BOOL CLogManager::ExportLogItems(LPCTSTR pszFilePath, DWORD dwFileds /* = EXPORT_FIELD_DEFAULT */, BOOL bAll /* = FALSE */)
 {
-    BOOL bRet = FALSE;
-    srand(GetTickCount());
-    FTL::CFUTF8File file;
-    //CStdioFile file;
-    //API_VERIFY(file.Open(pszFilePath,CFile::modeWrite | CFile::modeCreate | CFile::typeText));
-    API_VERIFY(file.Create(pszFilePath));
-    if (bRet)
+    BOOL bRet = TRUE;
+    CString strFilePath(pszFilePath);
+    LogFileType fileType = ft_Text;
+    CString strExt = strFilePath.Mid(strFilePath.ReverseFind(_T('.')));
+    if (strExt.CompareNoCase(TEXT(".json")) == 0)
     {
-        do 
+        fileType = ft_Json;
+    }
+
+    CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
+    LogItemArrayType* pSaveLogItems = bAll ? &m_AllLogItems : &m_DisplayLogItems;
+
+    if (fileType == ft_Json){
+        FTL::CFConversion conv;
+
+        Json::Value valRoot;
+        for (LogItemArrayIterator iter = pSaveLogItems->begin();
+        iter != pSaveLogItems->end() && bRet;
+            ++iter)
         {
-            CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
-            LogItemArrayType* pSaveLogItems = bAll ? &m_AllLogItems : &m_DisplayLogItems;
+            _GetLogItemExportJsonFormat(dwFileds, *iter, valRoot);
+        }
 
-            API_VERIFY(file.WriteFileHeader());
-            for (LogItemArrayIterator iter = pSaveLogItems->begin() ; 
-                iter != pSaveLogItems->end() && bRet;
-                ++iter)
-            {
-                CString strFormat;
+        Json::StyledStreamWriter styledStreamWriter("\t");  //指定每一行前面的缩进符号，缺省是制表符(\t)
+        std::ofstream osFile = std::ofstream(conv.TCHAR_TO_MBCS(pszFilePath));
+        styledStreamWriter.write(osFile, valRoot);
+    } else {
+        FTL::CFUTF8File file;
+        API_VERIFY(file.Create(pszFilePath, GENERIC_WRITE | GENERIC_READ, 
+            FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, TRUNCATE_EXISTING));
+        API_VERIFY(file.WriteFileHeader());
 
-                //保存成 FTL Log 的格式
-                LogItemPointer pItem = *iter;
-                if (INVALID_SEQ_NUMBER != pItem->seqNum)
-                {   //完整日志
-
-                    if (dwFileds & EXPORT_FIELD_MACHINE)
-                    {
-                        if (0 != pItem->machine.compare(DEFAULT_LOCAL_MACHINE))
-                        {
-                            strFormat.AppendFormat(TEXT("%s|"), pItem->machine.c_str());
-                        }
-                    }
-                    if (dwFileds & EXPORT_FIELD_FILE_POS)
-                    {
-                        strFormat.AppendFormat(TEXT("%s(%d):"), _ConvertNullString(pItem->pszSrcFileName), pItem->srcFileline);
-                    }
-                    if (dwFileds & EXPORT_FIELD_SEQ_NUM)
-                    {
-                        strFormat.AppendFormat(TEXT("%d|"), pItem->seqNum);
-                    }
-                    if (dwFileds & EXPORT_FIELD_TIME)
-                    {
-                        strFormat.AppendFormat(TEXT("%s|"), FormatDateTime(pItem->time, m_logConfig.m_dateTimeType));
-                    }
-                    if (dwFileds & EXPORT_FIELD_PID)
-                    {
-                        strFormat.AppendFormat(TEXT("%s|"), pItem->processId.c_str());
-                    }
-                    if (dwFileds & EXPORT_FIELD_TID)
-                    {
-                        strFormat.AppendFormat(TEXT("%s|"), pItem->threadId.c_str());
-                    }
-                    if (dwFileds & EXPORT_FIELD_TRACE_LEVEL)
-                    {
-                        strFormat.AppendFormat(TEXT("%s|"), CFLogger::GetLevelName(pItem->level));
-                    }
-                    if (dwFileds & EXPORT_FIELD_MODULE_NAME)
-                    {
-                        strFormat.AppendFormat(TEXT("%s|"), _ConvertNullString(pItem->pszModuleName));
-                    }
-                    if (dwFileds & EXPORT_FIELD_TRACE_INFO)
-                    {
-                        strFormat.AppendFormat(TEXT("%s\n"), pItem->pszTraceInfo);
-                    }
-                }
-                else {
-                    //不完整日志,因此只输出 traceInfo
-                    strFormat.Format(TEXT("%s\n"), pItem->pszTraceInfo);
-                }
-                API_VERIFY(file.WriteString(strFormat));
-            }
-        } while (FALSE);
+        for (LogItemArrayIterator iter = pSaveLogItems->begin();
+        iter != pSaveLogItems->end() && bRet;
+            ++iter)
+        {
+            CString strFormat;
+            _GetLogItemExportTextFormat(dwFileds, *iter, strFormat);
+            API_VERIFY(file.WriteString(strFormat));
+        }
         file.Close();
     }
+
     return bRet;
 }
 
@@ -410,10 +504,13 @@ BOOL CLogManager::IsItemMatchLineNumber(LONG lineNumber){
 
 BOOL CLogManager::IsItemIdChecked(const LogItemPointer& pItem){
     ID_INFOS& idInfos = m_allMachinePidTidInfos[pItem->machine][pItem->processId][pItem->threadId];
+    FTLTRACE(TEXT("machine:%s, pid=%s, tid=%s, checked=%d"), 
+        pItem->machine.c_str(), pItem->processId.c_str(), pItem->threadId.c_str(),
+        idInfos.bChecked);
     return idInfos.bChecked;
 }
 
-void CLogManager::OnlySelectSpecialItems(const MachinePIdTIdType& selectIdType, ONLY_SELECT_TYPE selType) {
+void CLogManager::OnlySelectSpecialItems(const MachinePIdTIdTypeList& selectIdTypeList, ONLY_SELECT_TYPE selType) {
     CFAutoLock<CFLockObject>  locker(&m_CsLockObj);
 
     for (MachinePidTidContainer::iterator iterMachine = m_allMachinePidTidInfos.begin();
@@ -421,35 +518,43 @@ void CLogManager::OnlySelectSpecialItems(const MachinePIdTIdType& selectIdType, 
         ++iterMachine)
     {
         MACHINE_NAME_TYPE curMachine = iterMachine->first;
-        BOOL isSameMachine = (curMachine == selectIdType.machine);
-        PidTidContainer& pidTidContainer = iterMachine->second;
+            PidTidContainer& pidTidContainer = iterMachine->second;
 
-        for (PidTidContainer::iterator iterPid = pidTidContainer.begin();
+            for (PidTidContainer::iterator iterPid = pidTidContainer.begin();
             iterPid != pidTidContainer.end();
-            ++iterPid)
-        {
-            PROCESS_ID_TYPE curProcess = iterPid->first;
-            BOOL isSameProcess = (curProcess == selectIdType.pid);
-            TidContainer& tidContainer = iterPid->second;
+                ++iterPid)
+            {
+                PROCESS_ID_TYPE curProcess = iterPid->first;
+                TidContainer& tidContainer = iterPid->second;
 
-            for (TidContainer::iterator iterTid = tidContainer.begin();
+                for (TidContainer::iterator iterTid = tidContainer.begin();
                 iterTid != tidContainer.end();
-                ++iterTid) {
-                THREAD_ID_TYPE curThread = iterTid->first;
-                BOOL isSameThread = (curThread == selectIdType.tid);
-                ID_INFOS& rIdInfos = iterTid->second;
+                    ++iterTid) {
+                    THREAD_ID_TYPE curThread = iterTid->first;
+                    ID_INFOS& rIdInfos = iterTid->second;
+                    rIdInfos.bChecked = FALSE;
 
-                if (ostMachine == selType) {
-                    rIdInfos.bChecked = isSameMachine;
-                }
-                else if (ostProcessId == selType) {
-                    rIdInfos.bChecked = isSameMachine && isSameProcess;
-                }
-                else if (ostThreadId == selType) {
-                    rIdInfos.bChecked = isSameMachine && isSameProcess && isSameThread;
+                    for (MachinePIdTIdTypeList::const_iterator iterIdType = selectIdTypeList.begin();
+                    iterIdType != selectIdTypeList.end();
+                        ++iterIdType) {
+                        const MachinePIdTIdType selectIdType = *iterIdType;
+
+                        BOOL isSameMachine = (curMachine == selectIdType.machine);
+                        BOOL isSameProcess = (curProcess == selectIdType.pid);
+                        BOOL isSameThread = (curThread == selectIdType.tid);
+
+                        if (ostMachine == selType) {
+                            rIdInfos.bChecked |= isSameMachine;
+                        }
+                        else if (ostProcessId == selType) {
+                            rIdInfos.bChecked |= isSameMachine && isSameProcess;
+                        }
+                        else if (ostThreadId == selType) {
+                            rIdInfos.bChecked |= isSameMachine && isSameProcess && isSameThread;
+                        }
+                    }
                 }
             }
-        }
     }
 
     DoFilterLogItems();
@@ -555,15 +660,15 @@ BOOL CLogManager::TryReparseRealFileName(CString& strFileName)
 }
 
 
-CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
+CString CLogManager::FormatDateTime(LONGLONG microSeconds, DateTimeType dtType)
 {
     BOOL bRet = FALSE;
     CString strResult;
 
-    //其值是 纳秒, 为了计算成 FILETIME 的值(100ns)
-    ULONGLONG time = nanoSeconds / 100;
+    //其值是 微秒, 为了计算成 FILETIME 的值(100ns)
+    LONGLONG time = microSeconds * 10;
     //把微秒值计算出来
-    int nanoSec = nanoSeconds % NANOSECOND_PER_SECOND;
+    int microSec = microSeconds % MICROSECOND_PER_SECOND;
     time = time / TIME_RESULT_TO_MILLISECOND * TIME_RESULT_TO_MILLISECOND;  //取整,将毫秒数据清除
 
     SYSTEMTIME st = { 0 };
@@ -583,16 +688,12 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
         {
         case dttDateTimeMilliSecond:
             strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%03d");
-            nSecDisplayValue = nanoSec / 1000000;
+            nSecDisplayValue = microSec / 1000;
             break;
-        case dttDateTimeMicrosecond:
-            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%06d");
-            nSecDisplayValue = nanoSec / 1000;
-            break;
-        case dttDateTimeNanoSecond: //默认显示成纳秒
+        case dttDateTimeMicrosecond: //默认显示成微秒
         default:
-            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%09d");
-            nSecDisplayValue = nanoSec;     
+            strFormat = TEXT("%4d-%02d-%02d %02d:%02d:%02d.%06d");
+            nSecDisplayValue = microSec;
             break;
         }
         strResult.Format(strFormat,
@@ -600,8 +701,8 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
             st.wHour, st.wMinute, st.wSecond, nSecDisplayValue);
     }
     else {
-        ULONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
-        ULONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
+        LONGLONG disTime = time % MIN_TIME_WITH_DAY_INFO;
+        LONGLONG tmpTime = disTime / TIME_RESULT_TO_MILLISECOND;
         st.wSecond = tmpTime % 60;
         tmpTime /= 60;
         st.wMinute = tmpTime % 60;
@@ -613,16 +714,12 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
         {
         case dttTimeMilliSecond:
             strFormat = TEXT("%02d:%02d:%02d.%03d");
-            nSecDisplayValue = nanoSec / 1000000;
+            nSecDisplayValue = microSec / 1000;
             break;
         case dttTimeMicrosecond:
-            strFormat = TEXT("%02d:%02d:%02d.%06d");
-            nSecDisplayValue = nanoSec / 1000;
-            break;
-        case dttTimeNanoSecond: //默认显示成纳秒
         default:
-            strFormat = TEXT("%02d:%02d:%02d.%09d");
-            nSecDisplayValue = nanoSec;
+            strFormat = TEXT("%02d:%02d:%02d.%06d");
+            nSecDisplayValue = microSec;
             break;
         }
         strResult.Format(strFormat,
@@ -631,24 +728,19 @@ CString CLogManager::FormatDateTime(ULONGLONG nanoSeconds, DateTimeType dtType)
     return strResult;
 }
 
-CString CLogManager::FormatElapseTime(ULONGLONG elapseTime, DateTimeType dtType)
+CString CLogManager::FormatElapseTime(LONGLONG elapseTime, DateTimeType dtType)
 {
     CString strResult;
     switch (dtType)
     {
     case dttDateTimeMilliSecond:
     case dttTimeMilliSecond:
-        strResult.Format(TEXT("%.3f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
+        strResult.Format(TEXT("%.3f s"), (double)elapseTime / MICROSECOND_PER_SECOND);
         break;
     case dttDateTimeMicrosecond:
     case dttTimeMicrosecond:
-        strResult.Format(TEXT("%.6f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
-        break;
-    case dttDateTimeNanoSecond:
-    case dttTimeNanoSecond:
     default:
-        strResult.Format(TEXT("%.9f s"), (double)elapseTime / NANOSECOND_PER_SECOND);
-
+        strResult.Format(TEXT("%.6f s"), (double)elapseTime / MICROSECOND_PER_SECOND);
         break;
     }
     return strResult;
@@ -750,18 +842,21 @@ BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
         m_fileCount = (LONG)logFilePaths.GetCount();
 
         ClearAllLogItems(); //先清除以前的
-        CString strExt = logFilePaths[0].Mid(logFilePaths[0].ReverseFind(_T('.')));
 
         INT_PTR logFileCount = logFilePaths.GetCount();
-        for (INT_PTR index = 0; bRet && index < logFileCount; index++)
+        LONG nStartLineIndex = -1;
+        LONG nNewLineIndex = 0;
+        for (INT_PTR index = 0; (nStartLineIndex != nNewLineIndex) && index < logFileCount; index++)
         {
-//             if (0 == strExt.CompareNoCase(TEXT(".ftl")))
-//             {
-//                 bRet = ReadFTLogFile(logFilePaths[index]);
-//             }
-//             else
+            CString strExt = logFilePaths[index].Mid(logFilePaths[index].ReverseFind(_T('.')));
+            nStartLineIndex = nNewLineIndex;
+            if (0 == strExt.CompareNoCase(TEXT(".json")))
             {
-                bRet = ReadTraceLogFile(logFilePaths[index]);
+                nNewLineIndex = ReadJsonLogFile(logFilePaths[index], nStartLineIndex);
+            }
+            else
+            {
+                nNewLineIndex = ReadTraceLogFile(logFilePaths[index], nStartLineIndex);
             }
             theApp.AddToRecentFileList(logFilePaths[index]);
         }
@@ -921,8 +1016,9 @@ LONG CLogManager::CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogInde
         pOutReverseLineList->clear();
     }
 
-    //m_AllLogItems 是按照顺序排列的，因此可以直接比较差值是否为 1
-    for (LogItemArrayIterator iter = m_AllLogItems.begin(); iter != m_AllLogItems.end(); ++iter) 
+    //TODO: 到底应该比较 m_AllLogItems(只能处理单进程) 还是 m_DisplayLogItems(可以过滤出单进程)
+    //m_DisplayLogItems 是按照顺序排列的，因此可以直接比较差值是否为 1
+    for (LogItemArrayIterator iter = m_DisplayLogItems.begin(); iter != m_DisplayLogItems.end(); ++iter) 
     {
         LogItemPointer pLogItem = *iter;
         if (pLogItem->seqNum != INVALID_SEQ_NUMBER)
@@ -930,28 +1026,30 @@ LONG CLogManager::CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogInde
             // 有缺失
             if (pLogItem->seqNum - preSeqNumber > 1)
             {
-                BOOL bFoundMissing = FALSE;
+                BOOL bFoundMissing = FALSE;  // 表示是否能在后面找到(反序了)
 
-#define MAX_CHECK_MISSING_DIFF_COUNT  1000
-                //向后寻找最多 X 条记录,看是否在后面(本质还是反序), 实测在 dokan 盘应用中,最多超过 100+
-                for (int c = 0; c < MAX_CHECK_MISSING_DIFF_COUNT; c++)
+#define MAX_CHECK_MISSING_DIFF_COUNT  10
+                //前后寻找最多 X 条记录,看是否在后面(本质还是反序), 实测在 dokan 盘应用中,最多超过 100+
+                for (int c = -MAX_CHECK_MISSING_DIFF_COUNT; c < MAX_CHECK_MISSING_DIFF_COUNT; c++)
                 {
                     int checkIndex = index + c;
-                    if (checkIndex < m_AllLogItems.size() - 1 && (m_AllLogItems[checkIndex + 1]->seqNum == preSeqNumber + 1))
+                    if (checkIndex >= 0 
+                        && checkIndex < m_DisplayLogItems.size() - 1 
+                        && (m_DisplayLogItems[checkIndex + 1]->seqNum == preSeqNumber + 1))
                     {
                         FTLTRACE(TEXT("check seq: seq[%d]=%d, curSeq=%d"), index + 1,
-                            m_AllLogItems[index + 1]->seqNum, pLogItem->seqNum);
+                            m_DisplayLogItems[index + 1]->seqNum, pLogItem->seqNum);
                         bFoundMissing = TRUE;
+                        break;
                     }
                 }
                 if (!bFoundMissing)
-                {   //没有找到缺失的记录
+                {   //在当前记录开始的后面 X 条记录中没有找到缺失的记录, 可以确认丢失.
                     if (pOutMissingLineList)
                     {
                         pOutMissingLineList->push_back(pLogItem->lineNum);
                         findCount++;
                     }
-                    preSeqNumber = pLogItem->seqNum;
                 }
             }
             
@@ -964,11 +1062,8 @@ LONG CLogManager::CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogInde
                     findCount++;
                 }
             }
-            else 
-            {
-                preSeqNumber = pLogItem->seqNum;
-            }
-
+           
+            preSeqNumber = pLogItem->seqNum;
             if (maxCount > 0 && findCount >= maxCount)
             {
                 break;
@@ -1033,6 +1128,123 @@ LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInf
     return topIndex;
 }
 
+VOID CLogManager::_ConvertTimeStampMsToSystemTime(LONGLONG milliSecond, SYSTEMTIME *pST) {
+    time_t nSec = milliSecond / 1000;
+    tm *ltm = localtime(&nSec);
+    ZeroMemory(pST, sizeof(SYSTEMTIME));
+    pST->wYear = 1900 + ltm->tm_year;
+    pST->wMonth = 1 + ltm->tm_mon;
+    pST->wDay = ltm->tm_mday;
+    pST->wHour = ltm->tm_hour;
+    pST->wMinute = ltm->tm_min;
+    pST->wSecond = ltm->tm_sec;
+    pST->wMilliseconds = milliSecond % 1000;
+}
+
+LONGLONG CLogManager::_parseTimeString(const std::string& strTime)
+{
+    BOOL bRet = FALSE;
+    if (!m_logConfig.m_strTimeFormat.IsEmpty())
+    {
+        //TODO: 日期时间解析的代码很挫(纯粹的硬编码,使用比较好的库?)
+        // chrono::parse ? 需要 C++20 ?
+        // boost::date_time::parse_delimited_time ? 需要引入boost
+        //FTLTRACEA("strTime=%s", strTime.c_str());
+
+        SYSTEMTIME st = { 0 };
+        GetLocalTime(&st);  //获取年月日等信息,后面才能通过 SystemTimeToFileTime 转换
+        st.wMilliseconds = 0;  //其精度只能到毫秒, 因此设置为 0, 通过 microSecond(微秒)保存及转换
+        LONGLONG fileTimeValue = 0;
+
+        DateTimeType newDateTimeType = dttDateTimeNone;
+
+        int microSecond = 0; //微秒
+        int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
+
+        if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("TIMESTAMP_SEC"))) {
+            long nSec = std::strtoll(strTime.c_str(), NULL, 10);
+            newDateTimeType = dttDateTimeMilliSecond;
+            fileTimeValue = nSec * 1000;
+            _ConvertTimeStampMsToSystemTime(fileTimeValue, &st);
+        } else  if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("TIMESTAMP_MILLSEC"))) {
+            newDateTimeType = dttDateTimeMilliSecond;
+            LONGLONG nTotalMillSec = std::strtoll(strTime.c_str(), NULL, 10);
+            _ConvertTimeStampMsToSystemTime(nTotalMillSec, &st);
+        } else if (0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))
+            || 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS"))
+            || 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS+0"))
+            || 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS"))
+            ) //不要最后的 +08:00
+        {
+            newDateTimeType = dttDateTimeMilliSecond;
+            //2022-03-30T11:17:50.380+08:00   <== Nelo 上的时间
+            sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02huT%02hu:%02hu:%02hu%*c%3d+%*c",
+                &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+            microSecond = milliSecond * 1000;
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS"))
+            || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSSSSS"))
+            )
+        {
+            newDateTimeType = dttDateTimeMicrosecond;
+            //2017-06-12 18:21:34.193000
+            sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%6d",
+                &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
+            || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSS")))
+        {
+            newDateTimeType = dttDateTimeMilliSecond;
+            //2017-06-12 18:21:34.193
+            sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%3d",
+                &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+            microSecond = milliSecond * 1000;
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))
+            || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss"))) {
+            //2017-06-12 18:21:34
+            newDateTimeType = dttDateTimeMilliSecond;
+            sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu",
+                &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))) {
+            newDateTimeType = dttTimeMilliSecond;
+            sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu",
+                &st.wHour, &st.wMinute, &st.wSecond);
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))) {
+            newDateTimeType = dttTimeMilliSecond;
+            sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%3d",
+                &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
+            microSecond = milliSecond * 1000;
+        }
+        else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSS"))) {
+            newDateTimeType = dttTimeMicrosecond;
+            sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%6d",
+                &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
+        }
+        else {
+            FTLASSERT(FALSE);
+            //FTL::FormatMessageBox(NULL, TEXT("Error"), 
+            //    MB_OK| MB_ICONERROR, TEXT("Not support date time format"));
+            //return LogItemPointer(NULL);
+        }
+
+        if (dttDateTimeNone == m_logConfig.m_dateTimeType)
+        {
+            //如果用户没有选择过, 才设置,否则保留用户的选择
+            m_logConfig.m_dateTimeType = newDateTimeType;
+        }
+        FILETIME localFileTime = { 0 };
+        API_VERIFY(SystemTimeToFileTime(&st, &localFileTime));
+
+        fileTimeValue = *((LONGLONG*)&localFileTime);  // 表示 100 ns, 通过除以10返回微秒
+
+        return fileTimeValue / 10 + microSecond;
+    }
+    return 0;
+}
+
 LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem)
 {
     BOOL bRet = FALSE;
@@ -1051,102 +1263,8 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
         if (m_logConfig.m_nItemTime != INVLIAD_ITEM_MAP)
         {
             std::string strTime = FTL::Trim(std::string(regularResults[m_logConfig.m_nItemTime]));
-            if (!m_logConfig.m_strTimeFormat.IsEmpty())
-            {
-                //TODO: 日期时间解析的代码很挫(纯粹的硬编码,使用比较好的库?)
-                // chrono::parse ? 需要 C++20 ?
-                // boost::date_time::parse_delimited_time ? 需要引入boost
-
-                SYSTEMTIME st = {0};
-                GetLocalTime(&st);  //获取年月日等信息,后面才能通过 SystemTimeToFileTime 转换
-                st.wMilliseconds = 0;  //其精度只能到毫秒, 因此设置为 0, 通过 nanoSecond(纳秒)保存及转换
-
-                int nanoSecond = 0;  //纳秒
-                int microSecond = 0; //微秒
-                int milliSecond = 0; //毫秒, ignore, zooHour = 0, zooMinute = 0;
-                if (0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS+0"))
-					|| 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy-MM-ddTHH:mm:ss.SSS"))
-                    || 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS+0"))
-					|| 0 == m_logConfig.m_strTimeFormat.Find(TEXT("yyyy/MM/ddTHH:mm:ss.SSS"))
-					) //不要最后的 +08:00
-                {
-                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
-                    //2022-03-30T11:17:50.380+08:00   <== Nelo 上的时间
-                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02huT%02hu:%02hu:%02hu%*c%3d+%*c",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
-                    nanoSecond = milliSecond * 1000000;
-                }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSS"))
-                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSSSSS"))
-                    )
-                {
-                    m_logConfig.m_dateTimeType = dttDateTimeMicrosecond;
-                    //2017-06-12 18:21:34.193000
-                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%6d",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    nanoSecond = microSecond * 1000;
-                }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
-                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSSSSSSSS")))
-                {
-                    m_logConfig.m_dateTimeType = dttDateTimeNanoSecond;
-                    //2017-06-12 18:21:34.193000
-                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%9d",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
-                }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss.SSS"))
-                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss.SSS")))
-                {
-                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
-                    //2017-06-12 18:21:34.193
-                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu%*c%3d",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
-                    microSecond = milliSecond * 1000;
-                    nanoSecond = milliSecond * 1000000;
-                }
-                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy-MM-dd HH:mm:ss"))
-                    || 0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("yyyy/MM/dd HH:mm:ss"))){
-                    //2017-06-12 18:21:34
-                    m_logConfig.m_dateTimeType = dttDateTimeMilliSecond;
-                    sscanf_s(strTime.c_str(), "%04hu%*c%02hu%*c%02hu %02hu:%02hu:%02hu",
-                        &st.wYear, &st.wMonth, &st.wDay, &st.wHour, &st.wMinute, &st.wSecond);
-                }
-                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss"))){
-                    m_logConfig.m_dateTimeType = dttTimeMilliSecond;
-                    sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu",
-                        &st.wHour, &st.wMinute, &st.wSecond);
-                }
-                else if(0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSS"))){
-                    m_logConfig.m_dateTimeType = dttTimeMilliSecond;
-                    sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%3d",
-                        &st.wHour, &st.wMinute, &st.wSecond, &milliSecond);
-                    microSecond = milliSecond * 1000;
-                    nanoSecond = milliSecond * 1000000;
-                }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSS"))) {
-                    m_logConfig.m_dateTimeType = dttTimeMicrosecond;
-                    sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%6d",
-                        &st.wHour, &st.wMinute, &st.wSecond, &microSecond);
-                    nanoSecond = microSecond * 1000;
-                }
-                else if (0 == m_logConfig.m_strTimeFormat.CompareNoCase(TEXT("HH:mm:ss.SSSSSSSSS"))) {
-                    m_logConfig.m_dateTimeType = dttTimeNanoSecond;
-                    sscanf_s(strTime.c_str(), "%02hu:%02hu:%02hu%*c%9d",
-                        &st.wHour, &st.wMinute, &st.wSecond, &nanoSecond);
-                }
-                else{
-                    FTLASSERT(FALSE);
-                    //FTL::FormatMessageBox(NULL, TEXT("Error"), 
-                    //    MB_OK| MB_ICONERROR, TEXT("Not support date time format"));
-                    //return LogItemPointer(NULL);
-                }
-
-                FILETIME localFileTime = {0};
-                API_VERIFY(SystemTimeToFileTime(&st,&localFileTime));
-
-                ULONGLONG fileTimeValue = *((LONGLONG*)&localFileTime);  // 表示 100 ns
-                pItem->time = fileTimeValue * 100 + nanoSecond;
-            }
+            pItem->time = _parseTimeString(strTime);
+            pItem->orgTimeStr = strTime;
         }
 
         if (m_logConfig.m_nItemSeqNum != INVLIAD_ITEM_MAP) {
@@ -1156,6 +1274,7 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
             std::string strLevel = std::string(regularResults[m_logConfig.m_nItemLevel]);
             FTL::Trim(strLevel);
             pItem->level = m_logConfig.GetTraceLevelByText(strLevel);
+            pItem->orgLevelStr = strLevel;
         }
         if (m_logConfig.m_nItemMachine != INVLIAD_ITEM_MAP){
             std::string strMachine = std::string(regularResults[m_logConfig.m_nItemMachine]);
@@ -1234,16 +1353,70 @@ LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const s
             }
         }
     }
+
     pItem->traceInfoLen = _ConvertItemInfo(strOneLog, pItem->pszTraceInfo, m_codePage);
     return pItem;
 }
 
-BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
+LogItemPointer CLogManager::ParseJsonLogItem(const Json::Value& valItem, const LogItemPointer& preLogItem) {
+    BOOL bRet = FALSE;
+    LogItemPointer pItem(new LogItem);
+    FTL::CFConversion conv;
+
+    if (!m_logConfig.m_strItemSeqNum.IsEmpty()) {
+        pItem->seqNum = valItem[m_logConfig.m_strItemSeqNum].asInt();
+    }
+    if (!m_logConfig.m_strItemMachine.IsEmpty()) {
+        pItem->machine = conv.UTF8_TO_TCHAR(valItem[m_logConfig.m_strItemMachine].asString().c_str());
+    }
+    if (!m_logConfig.m_strItemTime.IsEmpty()) {
+        std::string timeStr = valItem[m_logConfig.m_strItemTime].asString();
+        pItem->time = _parseTimeString(timeStr);
+        pItem->orgTimeStr = timeStr;
+    }
+    if (!m_logConfig.m_strItemLevel.IsEmpty()) {
+        std::string strLevel = valItem[m_logConfig.m_strItemLevel].asString();
+        pItem->level = m_logConfig.GetTraceLevelByText(strLevel);
+        pItem->orgLevelStr = strLevel;
+    }
+    if (!m_logConfig.m_strItemPId.IsEmpty()) {
+        pItem->processId = conv.UTF8_TO_TCHAR(valItem[m_logConfig.m_strItemPId].asString().c_str());
+    }    
+    if (!m_logConfig.m_strItemTId.IsEmpty()) {
+        pItem->threadId = conv.UTF8_TO_TCHAR(valItem[m_logConfig.m_strItemTId].asString().c_str());
+    }    
+    if (!m_logConfig.m_strItemModule.IsEmpty()) {
+        pItem->moduleNameLen = _ConvertItemInfo(valItem[m_logConfig.m_strItemModule].asString(), pItem->pszModuleName, m_codePage);
+    }    
+    if (!m_logConfig.m_strItemFun.IsEmpty()) {
+        _ConvertItemInfo(valItem[m_logConfig.m_strItemFun].asString(), pItem->pszFunName, m_codePage);
+    }    
+    if (!m_logConfig.m_strItemLine.IsEmpty()) {
+        pItem->lineNum = valItem[m_logConfig.m_strItemLine].asInt();
+    }
+    if (!m_logConfig.m_strItemLog.IsEmpty()) {
+        pItem->traceInfoLen = _ConvertItemInfo(valItem[m_logConfig.m_strItemLog].asString(), pItem->pszTraceInfo, m_codePage);
+    }
+    
+//     if(!m_logConfig.m_strItemRegBody.IsEmpty() && !m_logConfig.m_strLogRegular.IsEmpty()) {
+//         CAtlStringA logBody = valItem[m_logConfig.m_strItemRegBody].asString();
+// 
+//         const std::tr1::regex regularPattern(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular));
+//         const std::tr1::regex regularPattern2(conv.TCHAR_TO_UTF8(m_logConfig.m_strLogRegular_2));  //如果字符串为空,也没有问题
+// 
+//         pItem = ParseRegularTraceLog(logBody, regularPattern, regularPattern2, pItem);
+//     }
+
+    return pItem;
+}
+
+LONG CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath, LONG startLineNum)
 {
     BOOL bRet = FALSE;
     CFConversion conv;
+    LONG curLineNum = startLineNum;
 	//std::wifstream winFile(pszFilePath);
-    std::ifstream inFile(conv.TCHAR_TO_MBCS(pszFilePath));
+    std::ifstream inFile(conv.TCHAR_TO_MBCS(pszFilePath), std::ios::binary);
     if(inFile.good())
 	//if (winFile.good())
     {
@@ -1297,14 +1470,16 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                         strOneLog = strOneLog.substr(0, m_logConfig.m_nMaxLineLength);
                     }
                 }
+				//FTLTRACE(TEXT("parse [%d], str=%s"), readCount, conv.UTF8_TO_TCHAR(strOneLog.c_str()));
                 LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, regularPattern2, preLogItem);
                 preLogItem = pLogItem;
+                curLineNum++;  
                 if (pLogItem)
                 {
-                    pLogItem->lineNum = readCount;
+                    pLogItem->lineNum = curLineNum;
                     _AppendLogItem(pLogItem);
                 }
-                readCount++; //放到这个地方来，保证即使一行日志读取失败，lineNum 还是和文件的行数对应
+                readCount++; 
 
 #define LOG_INTERVAL_COUNT       10000
                 if (0 == (readCount % LOG_INTERVAL_COUNT))
@@ -1326,7 +1501,45 @@ BOOL CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath)
                 m_logConfig.m_config.GetFilePathName());
         }
     }
-    return bRet;
+    return curLineNum;
+}
+
+LONG CLogManager::ReadJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum) 
+{
+    BOOL bRet = FALSE;
+    LONG curLineNum = startLineNum;
+    CFConversion conv;
+    //std::wifstream winFile(pszFilePath);
+    std::ifstream inFile(conv.TCHAR_TO_MBCS(pszFilePath), std::ios::binary);
+    if (inFile.good())
+    {
+        Json::Value valRoot;
+        Json::Reader reader;
+        if (reader.parse(inFile, valRoot)) {
+            FTLTRACE(TEXT("read json %s, valRoot.size=%d"), pszFilePath, valRoot.size());
+            LogItemPointer preLogItem;
+            int itemCount = valRoot.size();
+            for (int i = 0; i < itemCount; i++) {
+                //FTLTRACE(TEXT("parse [%d], str=%s"), readCount, conv.UTF8_TO_TCHAR(strOneLog.c_str()));
+                int readIndex = i;
+                if (m_logConfig.m_readItemOrder == Desc)
+                {
+                    readIndex = itemCount - i - 1;
+                }
+                LogItemPointer pLogItem = ParseJsonLogItem(valRoot[readIndex], preLogItem);
+                preLogItem = pLogItem;
+                if (pLogItem)
+                {
+                    curLineNum++;
+                    pLogItem->lineNum = curLineNum;
+                    _AppendLogItem(pLogItem);
+                }
+            }
+            bRet = TRUE;
+        }
+    }
+
+    return curLineNum;
 }
 
 void CLogManager::_AppendLogItem(LogItemPointer& pLogItem){

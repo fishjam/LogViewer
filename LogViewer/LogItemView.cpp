@@ -32,6 +32,7 @@ static strColumnInfo	columnInfos[] =
     {TEXT("ModuleName"), 20,},
     {TEXT("FunName"), 20,},
     {TEXT("SourceFile"), 20,},
+    {TEXT("TraceInfoLen"), 20,},
     {TEXT("TraceInfo"), 800,}
 };
 
@@ -64,9 +65,9 @@ CLogItemView::~CLogItemView()
 
 BEGIN_MESSAGE_MAP(CLogItemView, CListView)
 	ON_COMMAND_EX(ID_EDIT_GOTO, &CLogItemView::OnEditGoTo)
-	ON_COMMAND_EX(ID_EDIT_CLEAR_CACHE, &CLogItemView::OnEditClearCache)
+    ON_COMMAND_EX(ID_EDIT_CLEAR_CACHE, &CLogItemView::OnEditClearCache)
     ON_COMMAND_EX(ID_EDIT_SET_SRC_PATHS, &CLogItemView::OnEditSetSrcPaths)
-	ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
+    ON_NOTIFY(HDN_ITEMCLICK, 0, &CLogItemView::OnHdnItemclickListAllLogitems)
     //ON_NOTIFY_RANGE(LVN_COLUMNCLICK,0,0xffff,OnColumnClick)
     //ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
     ON_NOTIFY_REFLECT(NM_CLICK, &CLogItemView::OnNMClick)
@@ -330,6 +331,10 @@ void CLogItemView::GetDispInfo(LVITEM* pItem)
             }
         case type_TraceLevel:
             StringCchCopy(pItem->pszText,pItem->cchTextMax - 1,pszTraceLevel[pLogItem->level]);
+            break;
+        case type_TraceInfoLen:
+            strFormat.Format(TEXT("%d"), pLogItem->traceInfoLen);
+            StringCchCopy(pItem->pszText, pItem->cchTextMax - 1, (LPCTSTR)strFormat);
             break;
         case type_TraceInfo:
             if (NULL != pLogItem->pszTraceInfo){
@@ -672,7 +677,7 @@ CString CLogItemView::_GetSelectedText(int textType)
                     break;
             }
 
-            if (NULL == strFormater.GetString())
+            if (0 == strFormater.GetStringLength())
             {
                 //first line
                 strFormater.AppendFormat(TEXT("%s"), strText);
@@ -814,50 +819,61 @@ void CLogItemView::_HighlightSameThread(LogItemPointer pCompareLogItem)
     }
 }
 
-int CLogItemView::_GetSelectedIdTypeValue(MachinePIdTIdType& idType) {
+int CLogItemView::_GetSelectedIdTypeValue(MachinePIdTIdTypeList& idTypeList) {
     CLogManager& logManager = GetDocument()->m_FTLogManager;
 
-    LVHITTESTINFO lvHistTestInfo = GetCurrentSelectInfo();
-    if (lvHistTestInfo.iItem != -1)
+    LogIndexContainer selectedItemList;
+    INT nSelectedSubItem = -1;
+    LONG nSelectCount = _GetSelectedLines(selectedItemList, nSelectedSubItem);
+    if (nSelectCount > 0 && nSelectedSubItem != -1)
     {
-        const LogItemPointer pLogItem = logManager.GetDisplayLogItem(lvHistTestInfo.iItem);
-        if (pLogItem) {
-            idType.machine = pLogItem->machine;
-            idType.pid = pLogItem->processId;
-            idType.tid = pLogItem->threadId;
+        for (LogIndexContainerIter iter = selectedItemList.begin(); iter != selectedItemList.end(); ++iter)
+        {
+            const LogItemPointer pLogItem = logManager.GetDisplayLogItem(*iter);
+            if(pLogItem){
+                MachinePIdTIdType idType;
+                idType.machine = pLogItem->machine;
+                idType.pid = pLogItem->processId;
+                idType.tid = pLogItem->threadId;
+                idTypeList.push_back(idType);
+                FTLTRACE(TEXT("Filter machine=%s, pid=%s, tid=%s"), 
+                    idType.machine.c_str(), idType.pid.c_str(), idType.tid.c_str());
+            }
         }
     }
-    return lvHistTestInfo.iItem;
+
+    return nSelectedSubItem;
 }
 
 void CLogItemView::OnDetailSelectCurrentPid() {
     int oldSelectIndex = 0;
-    MachinePIdTIdType selectedIdType;
+    MachinePIdTIdTypeList selectIdTypeList;
 
-    if(-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
+    if(-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectIdTypeList))) {
         CLogManager& logManager = GetDocument()->m_FTLogManager;
 
         UINT nCurSelectLine = _GetCurrentFirstSelectLine();
-        logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostProcessId);
-        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
-        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectedIdType);
+        logManager.OnlySelectSpecialItems(selectIdTypeList, ONLY_SELECT_TYPE::ostProcessId);
+        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectIdTypeList);
+        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID, (CObject*)&selectIdTypeList);
         _GotoSpecialLine(nCurSelectLine);
     }
 }
 
 void CLogItemView::OnDetailSelectCurrentTid() {
     int oldSelectIndex = 0;
-    MachinePIdTIdType selectedIdType;
-    if (-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectedIdType))) {
+    MachinePIdTIdTypeList selectIdTypeList;
+    if (-1 != (oldSelectIndex = _GetSelectedIdTypeValue(selectIdTypeList))) {
         CLogManager& logManager = GetDocument()->m_FTLogManager;
 
         UINT nCurSelectLine = _GetCurrentFirstSelectLine();
-        logManager.OnlySelectSpecialItems(selectedIdType, ONLY_SELECT_TYPE::ostThreadId);
-        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
-        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectedIdType);
+        logManager.OnlySelectSpecialItems(selectIdTypeList, ONLY_SELECT_TYPE::ostThreadId);
+        GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectIdTypeList);
+        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectIdTypeList);
         _GotoSpecialLine(nCurSelectLine);
     }
 }
+
 
 BOOL CLogItemView::OnEraseBkgnd(CDC* pDC)
 {

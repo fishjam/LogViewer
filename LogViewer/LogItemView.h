@@ -72,7 +72,7 @@ public:
     afx_msg void OnLvnItemchanged(NMHDR *pNMHDR, LRESULT *pResult);
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);
 private:
-    int _GetSelectedIdTypeValue(MachinePIdTIdType& idType);
+    int _GetSelectedIdTypeValue(MachinePIdTIdTypeList& idTypeList);
     UINT _GetCurrentFirstSelectLine();
     BOOL _GotoSpecialLine(UINT nGotoLineNumber);
 };

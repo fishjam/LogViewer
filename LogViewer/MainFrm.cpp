@@ -30,7 +30,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
     ON_COMMAND_RANGE(IDC_SETTING_CONFIG_INI_BEGIN, IDC_SETTING_CONFIG_INI_END, &CMainFrame::OnSettingConfigIniChange)
     ON_COMMAND_RANGE(IDC_CODE_PAGE_BEGIN, IDC_CODE_PAGE_END, &CMainFrame::OnCodePageChange)
     ON_COMMAND_RANGE(ID_TOOLS_STATISTICS_FILEPOS, ID_TOOLS_STATISTICS_TRACEINFO, &CMainFrame::OnToolsStatistics)
-    ON_COMMAND_RANGE(ID_DATE_TIME_MILLI_SECOND, ID_TIME_NANO_SECOND, &CMainFrame::OnDisplayTimeFormatSelected)
+    ON_COMMAND_RANGE(ID_DATE_TIME_MILLI_SECOND, ID_TIME_MICRO_SECOND, &CMainFrame::OnDisplayTimeFormatSelected)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -302,7 +302,7 @@ void CMainFrame::OnDisplayTimeFormatSelected(UINT nID)
     DateTimeType dateTimeType = (DateTimeType)(nID - ID_DATE_TIME_MILLI_SECOND);
     FTLTRACE(TEXT("OnDisplayTimeFormatSelected, index=%d"), dateTimeType);
 
-    GetMenu()->CheckMenuRadioItem(ID_DATE_TIME_MILLI_SECOND, ID_TIME_NANO_SECOND, nID,
+    GetMenu()->CheckMenuRadioItem(ID_DATE_TIME_MILLI_SECOND, ID_TIME_MICRO_SECOND, nID,
         MF_BYCOMMAND | MF_CHECKED);
 
     ((CLogViewerDoc*)GetActiveDocument())->m_FTLogManager.SetDisplayTimeType(dateTimeType);

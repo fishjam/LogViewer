@@ -348,11 +348,19 @@ namespace FTL
 	typedef CFTextFile<CFFileUnicodeEncoding> CFUnicodeFile;
 	typedef CFTextFile<CFFileUTF8Encoding>    CFUTF8File;
 
+    enum PathType {
+        ptUnknown,      //未知: 比如没有权限访问其父目录
+        ptNotExist,     //指定的路径上没有 文件或目录(错误路径)
+        ptFile,     
+        ptFolder
+    };
+
     //有 ATLPath 实现了很多功能, 如 RemoveFileSpec(删除路径最后的文件名)
     class CFPath
     {
     public:
-		//创建指定路径中的全部目录
+        FTLINLINE static PathType GetPathType(LPCTSTR pszPath);
+        //创建指定路径中的全部目录
 		FTLINLINE static BOOL CreateDirTree(LPCTSTR szPath);
         FTLINLINE static BOOL GetRelativePath(LPCTSTR pszFullPath, LPCTSTR pszParentPath, LPTSTR pszRelateivePath, UINT cchMax);
 

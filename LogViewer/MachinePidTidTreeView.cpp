@@ -93,25 +93,24 @@ void CMachinePidTidTreeView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHi
     if (pSender != this)
     {
         CFConversion conv;
-        std::wstring stdstring;
-        MachinePIdTIdType* pFilterIdType = NULL;
-        if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID == lHint)
-        {
-            pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + TEXT("/") + pFilterIdType->pid;
-        }
-        else  if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID == lHint) {
-            pFilterIdType = (MachinePIdTIdType*)pHint;
-            stdstring = MPT_TREE_ROOT_PATH + pFilterIdType->machine + TEXT("/") + pFilterIdType->pid + TEXT("/") + pFilterIdType->tid;
-        }
-        if (NULL == pFilterIdType)
+        std::set<CString> filterPathList;
+        MachinePIdTIdTypeList* pFilterIdTypeList = (MachinePIdTIdTypeList*)pHint;
+        if (NULL == pFilterIdTypeList)
         {
             return;
         }
+        for(MachinePIdTIdTypeList::iterator iter = pFilterIdTypeList->begin();
+            iter != pFilterIdTypeList->end();
+            ++iter){
+            std::wstring stdstring = MPT_TREE_ROOT_PATH + iter->machine + TEXT("/") + iter->pid;
+            if (VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID == lHint){
+                stdstring += TEXT("/") + iter->tid;
+            }
+            filterPathList.insert(CString(stdstring.c_str()));
+        }
 
         m_filterHint = lHint;
-        CString strFilterPath = stdstring.c_str();
-        enumTreeCtrl(this, (DWORD_PTR)&strFilterPath);
+        enumTreeCtrl(this, (DWORD_PTR)&filterPathList);
     }
 }
 
@@ -309,15 +308,14 @@ void CMachinePidTidTreeView::enumTreeCtrl(IEnumTreeCtrlItrmCallback* pCallBack, 
 
 void CMachinePidTidTreeView::onHandleItem(CTreeCtrl& treeCtrl, const CString& strItem, HTREEITEM hItem, DWORD_PTR param) {
   //FTLTRACE(TEXT("onHandleItem, strItem=%s"), strItem);
-  CString strFilterIdType = *((CString*)param);
+  std::set<CString>* filterIdTypeSet = ((std::set<CString>*)param);
   
   switch (m_filterHint)
   {
   case VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID:
-      treeCtrl.SetCheck(hItem, strItem.Find(strFilterIdType) == 0);
-      break;
   case VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID:
-      treeCtrl.SetCheck(hItem, strItem.Compare(strFilterIdType) == 0);
+      bool bCheck = (filterIdTypeSet->find(strItem) != filterIdTypeSet->end());
+      treeCtrl.SetCheck(hItem, bCheck);
       break;
   }
  
