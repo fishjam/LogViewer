@@ -116,12 +116,26 @@ void CDialogSourceHistory::OnBnClickedBtnAddSrcPath()
     FTL::CFDirBrowser dirBrowser(TEXT("Choose Project Source Root Path"), m_hWnd, strSelectPath);
     if (dirBrowser.DoModal())
     {
+        BOOL needAdd = FALSE;
         CString strFolderPath = dirBrowser.GetSelectPath();
 
         int matchIndex = m_listSourcePaths.FindString(0, strFolderPath);
         if (-1 == matchIndex)
         {
-            //没有才插入
+            //没有就插入
+            needAdd = TRUE;
+        } else {
+            // 有可能找到部分路径(比如:已有子目录, 尝试加入父目录), 因此这里比较完整路径
+            CString strFoundFolderPath;
+            m_listSourcePaths.GetText(matchIndex, strFoundFolderPath);
+            if (0 != strFoundFolderPath.CompareNoCase(strFolderPath)) {
+                //不一样,也需要加入
+                needAdd = TRUE;
+            }
+        }
+
+        if (needAdd)
+        {
             int nIndex = m_listSourcePaths.AddString(strFolderPath);
             m_listSourcePaths.SetCheck(nIndex, 1);
         }

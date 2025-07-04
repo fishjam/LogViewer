@@ -50,6 +50,7 @@ protected:  // control bar embedded members
     CSplitterWnd    m_wndVertSplitter;
     CSplitterWnd    m_wndHorzSplitter;
     CStringArray    m_iniFiles;
+    INT             m_nLastTextLength;
     CMenu           m_menuIni;
     TCHAR           m_szModulePath[MAX_PATH];
 // Generated message map functions

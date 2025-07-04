@@ -6,9 +6,6 @@
 #include <list>
 #include <ftlSharePtr.h>
 
-//if enable this, then can copy full log, but it will use double memory
-#define ENABLE_COPY_FULL_LOG        0
-
 #define INVALID_LINE_INDEX          (UINT)(-1)
 #define INVALID_SEQ_NUMBER          (LONG)(-1)
 //time 现在的单位是 FILETIME(100ns)
@@ -24,7 +21,8 @@
 //在 filter item 列表中通过右键选择只显示指定 pid/tid 的日志 => 更新 machinePidTid 视图. TODO: 是否有更好的方式?
 #define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_PID      1001
 #define VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID      1002
-#define VIEW_UPDATE_HINT_SELECT_LINE_INDEX         1003
+#define VIEW_UPDATE_HINT_FILTER_BY_FILENAME        1003
+#define VIEW_UPDATE_HINT_SELECT_LINE_INDEX         1004
 
 enum ONLY_SELECT_TYPE{
     ostMachine,

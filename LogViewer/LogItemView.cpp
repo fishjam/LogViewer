@@ -79,6 +79,9 @@ BEGIN_MESSAGE_MAP(CLogItemView, CListView)
     ON_COMMAND(ID_DETAILS_DELETE_SELECT_ITEMS, &CLogItemView::OnDetailDeleteSelectItems)
     ON_COMMAND(ID_DETAILS_SELECT_CURRENT_PID, &CLogItemView::OnDetailSelectCurrentPid)
     ON_COMMAND(ID_DETAILS_SELECT_CURRENT_TID, &CLogItemView::OnDetailSelectCurrentTid)
+    ON_COMMAND(ID_DETAILS_SELECT_CURRENT_FILE, &CLogItemView::OnDetailSelectCurrentFile)
+    ON_COMMAND(ID_DETAILS_CLEAR_FILTER_BY_FILES, &CLogItemView::OnDetailClearFilterByFiles)
+    
     ON_WM_CONTEXTMENU()
     ON_WM_ERASEBKGND()
     ON_NOTIFY_REFLECT(LVN_ITEMCHANGED, &CLogItemView::OnLvnItemchanged)
@@ -468,25 +471,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
         else
         {
             CString strTraceInfo(pLogItem->pszTraceInfo);
-
-            int leftBraPos = strTraceInfo.Find(TEXT('(')); //左括号
-            int rightBraPos = strTraceInfo.Find(TEXT(')'));//右括号
-            if (rightBraPos != -1)
-            {
-                int semPos = strTraceInfo.Find(TEXT(':'),rightBraPos);
-                if (-1 != semPos)  //找到分号，可能带有文件名和路径
-                {
-                    strTraceInfo.SetAt(semPos,TEXT('\0'));
-                    if (-1 != leftBraPos && -1 != rightBraPos && rightBraPos > leftBraPos)  
-                    {
-                        CString strLine = strTraceInfo.Mid(leftBraPos + 1, rightBraPos - leftBraPos - 1);
-                        line = _ttoi(strLine);
-
-                        strFileName = strTraceInfo.Left(leftBraPos);
-                        rLogManager.TryReparseRealFileName(strFileName);
-                    }
-                }
-            }
+            rLogManager.ParseFileNameAndPos(strTraceInfo, strFileName, line);
         }
 
         //如果找到文件名和行号,可以尝试通过源码定位
@@ -533,7 +518,7 @@ void CLogItemView::OnNMDblclk(NMHDR *pNMHDR, LRESULT *pResult)
 						}
 						if (szPathFull[0] == TEXT('\0'))
 						{
-							StringCchCopy(szPathFull, _countof(szPathFull), spFilePathList->front());
+							StringCchCopy(szPathFull, _countof(szPathFull), *spFilePathList->begin());
 						}
 						//TODO: if there are more than one file with same name, then prompt user choose
                     }
@@ -573,11 +558,14 @@ void CLogItemView::OnContextMenu(CWnd* pWnd, CPoint point)
         CMenu* pDetailMenu = menuDetails.GetSubMenu(0);
         FTLASSERT(pDetailMenu);
         m_ptContextMenuClick = point;
-#if ENABLE_COPY_FULL_LOG
-        pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_ENABLED | MF_BYCOMMAND);
-#else 
-        pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_DISABLED | MF_GRAYED | MF_BYCOMMAND);
-#endif
+
+        CLogManager& logManager = GetDocument()->m_FTLogManager;
+        if (logManager.m_logConfig.m_nEnableFullLog)
+        {
+            pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_ENABLED | MF_BYCOMMAND);
+        } else {
+            pDetailMenu->EnableMenuItem(ID_DETAILS_COPY_FULL_LOG, MF_DISABLED | MF_GRAYED | MF_BYCOMMAND);
+        }
         API_VERIFY(pDetailMenu->TrackPopupMenu(TPM_TOPALIGN|TPM_LEFTBUTTON,point.x,point.y,pWnd));
     }
 }
@@ -726,7 +714,6 @@ void CLogItemView::OnDetailsCopyLineText()
 
 void CLogItemView::OnDetailsCopyFullLog()
 {
-#if ENABLE_COPY_FULL_LOG
     BOOL bRet = FALSE;
     CString strText;
 
@@ -746,7 +733,6 @@ void CLogItemView::OnDetailsCopyFullLog()
             TEXT("pos=[%d,%d], text=%s, Last Error=%d"), 
             lvHistTestInfo.iItem, lvHistTestInfo.iSubItem, strText, GetLastError());
     }
-#endif
 }
 
 void CLogItemView::OnDetailDeleteSelectItems() {
@@ -820,6 +806,24 @@ void CLogItemView::_HighlightSameThread(LogItemPointer pCompareLogItem)
 }
 
 int CLogItemView::_GetSelectedIdTypeValue(MachinePIdTIdTypeList& idTypeList) {
+    LogItemsContainer selectedLogItems;
+    INT nSelectedSubItem = _GetSelectedIdLogItems(selectedLogItems);
+
+    for (LogItemsContainerIter iter = selectedLogItems.begin(); iter != selectedLogItems.end(); ++iter)
+    {
+        const LogItemPointer pLogItem = *iter;
+        MachinePIdTIdType idType;
+        idType.machine = pLogItem->machine;
+        idType.pid = pLogItem->processId;
+        idType.tid = pLogItem->threadId;
+        idTypeList.push_back(idType);
+        FTLTRACE(TEXT("Filter machine=%s, pid=%s, tid=%s"),
+            idType.machine.c_str(), idType.pid.c_str(), idType.tid.c_str());
+    }
+    return nSelectedSubItem;
+}
+
+int CLogItemView::_GetSelectedIdLogItems(LogItemsContainer& selectedLogItems){
     CLogManager& logManager = GetDocument()->m_FTLogManager;
 
     LogIndexContainer selectedItemList;
@@ -830,14 +834,8 @@ int CLogItemView::_GetSelectedIdTypeValue(MachinePIdTIdTypeList& idTypeList) {
         for (LogIndexContainerIter iter = selectedItemList.begin(); iter != selectedItemList.end(); ++iter)
         {
             const LogItemPointer pLogItem = logManager.GetDisplayLogItem(*iter);
-            if(pLogItem){
-                MachinePIdTIdType idType;
-                idType.machine = pLogItem->machine;
-                idType.pid = pLogItem->processId;
-                idType.tid = pLogItem->threadId;
-                idTypeList.push_back(idType);
-                FTLTRACE(TEXT("Filter machine=%s, pid=%s, tid=%s"), 
-                    idType.machine.c_str(), idType.pid.c_str(), idType.tid.c_str());
+            if (pLogItem) {
+                selectedLogItems.push_back(pLogItem);
             }
         }
     }
@@ -870,6 +868,46 @@ void CLogItemView::OnDetailSelectCurrentTid() {
         logManager.OnlySelectSpecialItems(selectIdTypeList, ONLY_SELECT_TYPE::ostThreadId);
         GetDocument()->UpdateAllViews(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectIdTypeList);
         OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_CHOOSE_TID, (CObject*)&selectIdTypeList);
+        _GotoSpecialLine(nCurSelectLine);
+    }
+}
+
+void CLogItemView::OnDetailSelectCurrentFile() {
+    int oldSelectIndex = 0;
+    LogItemsContainer selectedLogItems;
+    if (-1 != (oldSelectIndex = _GetSelectedIdLogItems(selectedLogItems))){ 
+        CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+        // 获取所有用户选择的有效文件名
+        std::set<CString> selectFileNames;
+        for(LogItemsContainerIter iter = selectedLogItems.begin(); iter != selectedLogItems.end(); ++iter){
+            const LogItemPointer pLogItem = *iter;
+            if (pLogItem->pszSrcFileName)
+            {
+                CString strFileName(pLogItem->pszSrcFileName);
+                if (!strFileName.IsEmpty())
+                {
+                    selectFileNames.insert(pLogItem->pszSrcFileName);
+                }
+            }
+        }
+        if (!selectFileNames.empty())
+        {
+            UINT nCurSelectLine = _GetCurrentFirstSelectLine();
+            logManager.SetFilterFileNames(selectFileNames);
+
+            OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_FILENAME, NULL);
+            _GotoSpecialLine(nCurSelectLine);
+        }
+    }
+}
+
+void CLogItemView::OnDetailClearFilterByFiles() {
+    UINT nCurSelectLine = _GetCurrentFirstSelectLine();
+    CLogManager& logManager = GetDocument()->m_FTLogManager;
+
+    if(logManager.ClearFilterFileNames()){
+        OnUpdate(this, VIEW_UPDATE_HINT_FILTER_BY_FILENAME, NULL);
         _GotoSpecialLine(nCurSelectLine);
     }
 }

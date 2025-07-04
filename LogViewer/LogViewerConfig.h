@@ -24,6 +24,8 @@
 //  VSCode:   OPEN_COMMAND=D:\VSCode\Code.exe --goto $ITEM_FILE:$ITEM_LINE
 #define KEY_OPEN_COMMAND        TEXT("OPEN_COMMAND")
 
+#define KEY_ENABLE_FULL_LOG     TEXT("ENABLE_FULL_LOG")
+
 #define MAX_LINE_LENGTH         TEXT("MAX_LINE_LENGTH")
 
 //for REGMAP(regex) or JSONMAP(json)
@@ -101,7 +103,9 @@ public:
     CString         m_strTimeFormat;
     DateTimeType    m_dateTimeType;
 
-    INT m_nMaxLineLength;        //每行的最大长度,超过的话，就裁剪
+    //if enable this, then can copy full log, but it will use double memory
+    INT m_nEnableFullLog;       //是否加载全部日志.
+    INT m_nMaxLineLength;       //每行的最大长度,超过的话，就裁剪
 
     //regex map
     INT m_nItemSeqNum;

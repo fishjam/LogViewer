@@ -31,7 +31,8 @@ CLogViewerConfig::CLogViewerConfig(void)
 
     m_nItemSrcFileEx = INVLIAD_ITEM_MAP;
 
-    m_dateTimeType = dttDateTimeNone;
+    m_dateTimeType = dttTimeMilliSecond;  //TODO: 改成默认只显示时间(免得太长)
+    m_nEnableFullLog = 0;  //if enable this, then can copy full log, but it will use double memory
     m_nMaxLineLength = 4096;
 }
 
@@ -62,6 +63,8 @@ BOOL CLogViewerConfig::LoadConfig(LPCTSTR pszConfigFile)
         m_config.GetString(SECTION_COMMON, KEY_OPEN_COMMAND, DEFAULT_NULL_VALUE, m_strOpenCommand);
 
         m_config.GetString(SECTION_COMMON, KEY_TIMEFORMAT, DEFAULT_NULL_VALUE, m_strTimeFormat);
+
+        m_nEnableFullLog = (INT)m_config.GetInt(SECTION_COMMON, KEY_ENABLE_FULL_LOG, m_nEnableFullLog);
         m_nMaxLineLength = (INT)m_config.GetInt(SECTION_COMMON, MAX_LINE_LENGTH, m_nMaxLineLength);
 
         m_config.GetString(SECTION_COMMON, KEY_SRC_REGULAR, DEFAULT_NULL_VALUE, m_strSrcRegular);

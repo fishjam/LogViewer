@@ -7,6 +7,7 @@
 #include "LogFilterView.h"
 #include "LogItemView.h"
 #include "MainFrm.h"
+#include "DialogTextLength.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -52,6 +53,7 @@ static UINT indicators[] =
 CMainFrame::CMainFrame()
 {
     // TODO: add member initialization code here
+    m_nLastTextLength = -1;
     ZeroMemory(m_szModulePath, _countof(m_szModulePath));
 }
 
@@ -229,7 +231,7 @@ BOOL CMainFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext* pContext)
     //    RUNTIME_CLASS(CSplitterWnd),CSize(0, 0), pContext));
     
     API_VERIFY(m_wndVertSplitter.CreateView(0, 0,
-        RUNTIME_CLASS(CLogFilterView), CSize(0, rcWin.Height() - 380), pContext));
+        RUNTIME_CLASS(CLogFilterView), CSize(0, rcWin.Height() - 500), pContext));
 
     API_VERIFY(m_wndVertSplitter.CreateView(1, 0,
         RUNTIME_CLASS(CLogItemView), CSize(0, 0), pContext));
@@ -384,7 +386,13 @@ VOID CMainFrame::OnToolsStatistics(UINT nID)
         itemType = type_TraceInfo;
         break;
     }
-    LONG nStatistics = rLogManager.GetTopOccurrenceLogs(10, staticsInfos, itemType);
+
+    CDialogTextLength dlgTextLength(m_nLastTextLength, this);
+    if (dlgTextLength.DoModal())
+    {
+        m_nLastTextLength = dlgTextLength.GetTextLength();
+    }
+    LONG nStatistics = rLogManager.GetTopOccurrenceLogs(10, m_nLastTextLength, staticsInfos, itemType);
 
     FTLTRACE(TEXT("nTop statics %d"), nStatistics);
     CAtlString strFormater;

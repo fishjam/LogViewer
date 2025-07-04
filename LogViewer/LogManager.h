@@ -76,7 +76,7 @@ struct LogOccurrenceInfo {
 
 struct LogItemFilter;
 
-typedef std::list<CString>         SameNameFilePathList;
+typedef std::set<CString>         SameNameFilePathList;
 typedef std::shared_ptr<SameNameFilePathList>   SameNameFilePathListPtr;
 typedef std::map<CString, SameNameFilePathListPtr, CAtlStringCompareI> FileName2FullPathMap;
 
@@ -119,7 +119,6 @@ public:
     void setActiveItemIndex(LONG lineIndex, LONG displayIndex);
     LONG GetActiveLineIndex();
     CString getActiveItemTraceInfo();
-   
 
     MachinePidTidContainer& GetAllMachinePidTidInfos(){
         return m_allMachinePidTidInfos;
@@ -130,6 +129,10 @@ public:
     SortContent GetFirstSortContent() const;
 
     BOOL IsItemMatchLineNumber(LONG lineNumber);
+
+    //是否符合按文件名过滤
+    BOOL IsFilterFile(CString fileName);
+
     //是否选中 -- 进行过滤
     BOOL IsItemIdChecked(const LogItemPointer& pItem);
 
@@ -141,6 +144,8 @@ public:
     void SetCodepage(UINT codepage){ m_codePage = codepage; }
     void SetDisplayTimeType(DateTimeType dateTimeType);
     BOOL SetFilterLineNumber(LONG nStartLineNumber, LONG nEndLineNumber);
+    BOOL SetFilterFileNames(std::set<CString>& filterFiles);
+    BOOL ClearFilterFileNames();
     BOOL SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType);
     CLogViewerConfig    m_logConfig;
 
@@ -159,7 +164,10 @@ public:
     LONG CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogIndexContainer* pOutReverseLineList, LONG maxCount = 1);
 
     //统计出现次数最多的 nTop 个日志
-    LONG GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInfo, LogItemContentType itemType = type_FilePos);
+    LONG GetTopOccurrenceLogs(LONG nTop, UINT nTextLength, LogStatisticsInfos& staticsInfo, LogItemContentType itemType = type_FilePos);
+
+    //辅助方法
+    BOOL ParseFileNameAndPos(CString strTraceInfo, CString& outFileName, int& outLine);
 protected:
     typedef std::vector<LogItemPointer>     LogItemArrayType;
     typedef LogItemArrayType::iterator      LogItemArrayIterator;
@@ -193,6 +201,7 @@ protected:
     LONG                        m_fileCount;
     LONG                        m_nStartLineNumber;
     LONG                        m_nEndLineNumber;
+    std::set<CString>           m_setFilterFiles;
     LONG                        m_nSelectedProcessCount;
     LONG                        m_nSelectedThreadCount;
     LONG                        m_activeLineIndex;
@@ -211,6 +220,7 @@ protected:
     //LogItemPointer ParseTraceLog(std::string& strOneLog);
     LONG ReadTraceLogFile(LPCTSTR pszFilePath, LONG startLineNum);
     LONG ReadJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum);
+    LONG ReadNdJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum);
 
     LogItemPointer ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem);
     LogItemPointer ParseJsonLogItem(const Json::Value& valItem, const LogItemPointer& preLogItem);

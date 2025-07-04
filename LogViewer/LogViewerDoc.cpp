@@ -98,7 +98,7 @@ void CLogViewerDoc::Dump(CDumpContext& dc) const
 
 void CLogViewerDoc::GetFileFilterString(CString & strFilter)
 {
-    strFilter += TEXT("Log Files (*.log;*.txt;*.json)|*.log;*.txt;*.json|");
+    strFilter += TEXT("Log Files (*.log;*.txt;*.json;*.ndjson)|*.log;*.txt;*.json;*.ndjson|");
 
     CString allFilter;
     VERIFY(allFilter.LoadString(AFX_IDS_ALLFILTER));

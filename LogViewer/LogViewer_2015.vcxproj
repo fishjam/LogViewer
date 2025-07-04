@@ -214,6 +214,7 @@
     <ClCompile Include="DialogGoTo.cpp" />
     <ClCompile Include="DialogSameFilesList.cpp" />
     <ClCompile Include="DialogSourceHistory.cpp" />
+    <ClCompile Include="DialogTextLength.cpp" />
     <ClCompile Include="jsoncpp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -243,6 +244,7 @@
     <ClInclude Include="DialogGoTo.h" />
     <ClInclude Include="DialogSameFilesList.h" />
     <ClInclude Include="DialogSourceHistory.h" />
+    <ClInclude Include="DialogTextLength.h" />
     <ClInclude Include="json.h" />
     <ClInclude Include="LogFilterView.h" />
     <ClInclude Include="LogItemView.h" />

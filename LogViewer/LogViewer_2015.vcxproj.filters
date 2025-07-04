@@ -63,6 +63,9 @@
     <ClCompile Include="jsoncpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DialogTextLength.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LogFilterView.h">
@@ -117,6 +120,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="json.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DialogTextLength.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

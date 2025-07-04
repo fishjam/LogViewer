@@ -64,6 +64,8 @@ public:
     afx_msg void OnDetailDeleteSelectItems();
     afx_msg void OnDetailSelectCurrentPid();
     afx_msg void OnDetailSelectCurrentTid();
+    afx_msg void OnDetailSelectCurrentFile();
+    afx_msg void OnDetailClearFilterByFiles();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg BOOL OnEditGoTo(UINT nID);
     afx_msg BOOL OnEditClearCache(UINT nID);
@@ -73,6 +75,7 @@ public:
     afx_msg void OnUpdateIndicatorSelectedLogItem(CCmdUI *pCmdUI);
 private:
     int _GetSelectedIdTypeValue(MachinePIdTIdTypeList& idTypeList);
+    int _GetSelectedIdLogItems(LogItemsContainer& selectedLogItem);
     UINT _GetCurrentFirstSelectLine();
     BOOL _GotoSpecialLine(UINT nGotoLineNumber);
 };

@@ -49,6 +49,10 @@ public:
         }
         if (bChecked)
         {
+            bChecked = m_LogManager.IsFilterFile(pItem->pszSrcFileName);
+        }
+        if (bChecked)
+        {
             if (!m_LogManager.m_strLogInfoFilterString.IsEmpty())
             {
                 CAtlString strFilter = m_LogManager.m_strLogInfoFilterString;
@@ -502,6 +506,29 @@ BOOL CLogManager::IsItemMatchLineNumber(LONG lineNumber){
     return FTL_INRANGE(m_nStartLineNumber, lineNumber, checkEndLineNumber);
 }
 
+BOOL CLogManager::IsFilterFile(CString filePath){
+    if(m_setFilterFiles.empty()){
+        //允许全部文件
+        return TRUE;
+    }
+
+    if (filePath.IsEmpty())
+    {
+        //如果当前文件没有路径? 怎么会发生? 暂定也允许
+        return TRUE;
+    }
+
+    //需要按文件名过滤,
+    CString fileName = filePath;
+    if (m_setFilterFiles.end() != m_setFilterFiles.find(fileName))
+    {
+        //如果找到对应文件名
+        return TRUE;
+    }
+    
+    return FALSE;
+}
+
 BOOL CLogManager::IsItemIdChecked(const LogItemPointer& pItem){
     ID_INFOS& idInfos = m_allMachinePidTidInfos[pItem->machine][pItem->processId][pItem->threadId];
     FTLTRACE(TEXT("machine:%s, pid=%s, tid=%s, checked=%d"), 
@@ -581,6 +608,23 @@ BOOL CLogManager::SetFilterLineNumber(LONG nStartLineNumber, LONG nEndLineNumber
     m_nEndLineNumber = nEndLineNumber;
     return TRUE;
 }
+
+BOOL CLogManager::SetFilterFileNames(std::set<CString>& filterFiles){
+    m_setFilterFiles.swap(filterFiles);
+    DoFilterLogItems();
+    return TRUE;
+}
+
+BOOL CLogManager::ClearFilterFileNames(){
+    if (!m_setFilterFiles.empty())
+    {
+        m_setFilterFiles.clear();
+        DoFilterLogItems();
+        return TRUE;
+    }
+    return FALSE;
+}
+
 
 BOOL CLogManager::SetLogInfoFilterString(LPCTSTR pszFilterString, FilterType filterType)
 {
@@ -852,11 +896,16 @@ BOOL CLogManager::SetLogFiles(const CStringArray &logFilePaths)
             nStartLineIndex = nNewLineIndex;
             if (0 == strExt.CompareNoCase(TEXT(".json")))
             {
+                //json 格式的文件, 整个文件是个大的 json
                 nNewLineIndex = ReadJsonLogFile(logFilePaths[index], nStartLineIndex);
-            }
-            else
+            } 
+            else if(0 == strExt.CompareNoCase(TEXT(".ndjson")))
             {
-                nNewLineIndex = ReadTraceLogFile(logFilePaths[index], nStartLineIndex);
+                //ndjson 格式的文件, 每一行是一个 json
+                nNewLineIndex = ReadNdJsonLogFile(logFilePaths[index], nStartLineIndex);
+            } 
+            else {
+                    nNewLineIndex = ReadTraceLogFile(logFilePaths[index], nStartLineIndex);
             }
             theApp.AddToRecentFileList(logFilePaths[index]);
         }
@@ -918,7 +967,7 @@ FileFindResultHandle CLogManager::OnFindFile(LPCTSTR pszFilePath, const WIN32_FI
             spSameNameFilePathList = iter->second;
         }
 
-        spSameNameFilePathList->push_back(pszFilePath);
+        spSameNameFilePathList->insert(pszFilePath);
     }
 
     return rhContinue;
@@ -1076,7 +1125,7 @@ LONG CLogManager::CheckSeqNumber(LogIndexContainer* pOutMissingLineList, LogInde
     return findCount;
 }
 
-LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInfo, LogItemContentType itemType)
+LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, UINT nTextLength, LogStatisticsInfos& staticsInfo, LogItemContentType itemType)
 {
     typedef std::map<CString, LONG>     LogStatisticsMap;
     LogStatisticsMap tempLogMap;
@@ -1099,7 +1148,15 @@ LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInf
             }
         case type_TraceInfo:
         default:
-            tempLogMap[pLogItem->pszTraceInfo]++;
+            if (nTextLength <= 0 )
+            {
+                tempLogMap[pLogItem->pszTraceInfo]++;
+            } else {
+                CString strTemp(pLogItem->pszTraceInfo);
+                UINT nMaxLength = FTL_MIN(strTemp.GetLength(), nTextLength);
+                tempLogMap[strTemp.Left(nMaxLength)]++;
+            }
+            
             break;
         }
     }
@@ -1126,6 +1183,30 @@ LONG CLogManager::GetTopOccurrenceLogs(LONG nTop, LogStatisticsInfos& staticsInf
     }
 
     return topIndex;
+}
+
+BOOL CLogManager::ParseFileNameAndPos(CString strTraceInfo, CString& outFileName, int& outLine){
+    int leftBraPos = strTraceInfo.Find(TEXT('(')); //左括号
+    int rightBraPos = strTraceInfo.Find(TEXT(')'));//右括号
+    if (rightBraPos != -1)
+    {
+        int semPos = strTraceInfo.Find(TEXT(':'), rightBraPos);
+        if (-1 != semPos)  //找到分号，可能带有文件名和路径
+        {
+            strTraceInfo.SetAt(semPos, TEXT('\0'));
+            if (-1 != leftBraPos && -1 != rightBraPos && rightBraPos > leftBraPos)
+            {
+                CString strLine = strTraceInfo.Mid(leftBraPos + 1, rightBraPos - leftBraPos - 1);
+                outLine = _ttoi(strLine);
+
+                outFileName = strTraceInfo.Left(leftBraPos);
+                TryReparseRealFileName(outFileName);
+
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
 }
 
 VOID CLogManager::_ConvertTimeStampMsToSystemTime(LONGLONG milliSecond, SYSTEMTIME *pST) {
@@ -1248,16 +1329,25 @@ LONGLONG CLogManager::_parseTimeString(const std::string& strTime)
 LogItemPointer CLogManager::ParseRegularTraceLog(std::string& strOneLog, const std::tr1::regex& reg, const std::tr1::regex& reg2, const LogItemPointer& preLogItem)
 {
     BOOL bRet = FALSE;
+
+    LogItemPointer pItem(new LogItem);
+    pItem->level = FTL::tlTrace;
+
+    FTL::CFConversion conv;
+    if (m_logConfig.m_nEnableFullLog)
+    {
+        //将原始的字符串赋值给 fullLog
+        _ConvertItemInfo(strOneLog, pItem->pszFullLog, m_codePage);
+    }
+
+    //如果长度太长(比如 600K+ ),正则表达式会失败(内存不足)
+    if (strOneLog.length() > m_logConfig.m_nMaxLineLength)
+    {
+        strOneLog = strOneLog.substr(0, m_logConfig.m_nMaxLineLength);
+    }
+
     std::tr1::smatch regularResults;
     bool result = std::tr1::regex_match(strOneLog, regularResults, reg);
-    LogItemPointer pItem(new LogItem);
-    FTL::CFConversion conv;
-
-#if ENABLE_COPY_FULL_LOG
-    _ConvertItemInfo(strOneLog, pItem->pszFullLog, m_codePage);
-#endif
-
-    pItem->level = FTL::tlTrace;
     if (result) //success
     {
         if (m_logConfig.m_nItemTime != INVLIAD_ITEM_MAP)
@@ -1463,12 +1553,6 @@ LONG CLogManager::ReadTraceLogFile(LPCTSTR pszFilePath, LONG startLineNum)
                             strOneLog.erase(strOneLog.length() - 1);
                         }
                     } while (needRemove && !strOneLog.empty());
-
-                    //如果长度太长(比如 600K+ ),正则表达式会失败(内存不足)
-                    if (strOneLog.length() > m_logConfig.m_nMaxLineLength)
-                    {
-                        strOneLog = strOneLog.substr(0, m_logConfig.m_nMaxLineLength);
-                    }
                 }
 				//FTLTRACE(TEXT("parse [%d], str=%s"), readCount, conv.UTF8_TO_TCHAR(strOneLog.c_str()));
                 LogItemPointer pLogItem = ParseRegularTraceLog(strOneLog, regularPattern, regularPattern2, preLogItem);
@@ -1539,6 +1623,40 @@ LONG CLogManager::ReadJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum)
         }
     }
 
+    return curLineNum;
+}
+
+LONG CLogManager::ReadNdJsonLogFile(LPCTSTR pszFilePath, LONG startLineNum)
+{
+    BOOL bRet = FALSE;
+    CFConversion conv;
+    LONG curLineNum = startLineNum;
+    std::ifstream inFile(conv.TCHAR_TO_MBCS(pszFilePath), std::ios::binary);
+    if (inFile.good())
+    {
+        std::string strOneLog;
+        UINT readCount = 1;
+        LogItemPointer preLogItem;
+        DWORD dwStartTime = GetTickCount();
+
+        while (getline(inFile, strOneLog))
+        {
+            Json::Value valLine;
+            Json::Reader reader;
+            readCount++;
+            if (reader.parse(strOneLog, valLine)) {
+                LogItemPointer pLogItem = ParseJsonLogItem(valLine, preLogItem);
+                preLogItem = pLogItem;
+                if (pLogItem)
+                {
+                    curLineNum++;
+                    pLogItem->lineNum = curLineNum;
+                    _AppendLogItem(pLogItem);
+                }
+            }
+        }
+        bRet = TRUE;
+    }
     return curLineNum;
 }
 

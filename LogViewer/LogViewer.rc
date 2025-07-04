@@ -16,10 +16,8 @@
 // Chinese (Simplified, PRC) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
-#ifdef _WIN32
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 #pragma code_page(936)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -66,9 +64,7 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\LogViewer.ico"
-
 IDR_FAST_TRACE_LOG_VIEW_TYPE ICON                    "res\\LogViewerDoc.ico"
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -76,7 +72,6 @@ IDR_FAST_TRACE_LOG_VIEW_TYPE ICON                    "res\\LogViewerDoc.ico"
 //
 
 IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -194,6 +189,9 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Select Current PID",          ID_DETAILS_SELECT_CURRENT_PID
         MENUITEM "Select Current TID",          ID_DETAILS_SELECT_CURRENT_TID
+        MENUITEM SEPARATOR
+        MENUITEM "Select Current File",         ID_DETAILS_SELECT_CURRENT_FILE
+        MENUITEM "Clear Filter By Files",       ID_DETAILS_CLEAR_FILTER_BY_FILES
     END
 END
 
@@ -277,6 +275,17 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,161,57,50,14
     EDITTEXT        IDC_EDIT_GOTO_LINENUM,70,25,173,14,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "Line Num:",IDC_STATIC,19,28,30,8
+END
+
+IDD_DIALOG_LENGTH DIALOGEX 0, 0, 287, 89
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Length"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,89,57,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,161,57,50,14
+    EDITTEXT        IDC_EDIT_TEXT_LENGTH,70,25,173,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Text Length:",IDC_STATIC,19,28,30,8
 END
 
 IDD_DIALOG_SAME_FILE_LISTS DIALOGEX 0, 0, 497, 201
@@ -381,6 +390,14 @@ BEGIN
         BOTTOMMARGIN, 82
     END
 
+    IDD_DIALOG_LENGTH, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 280
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 82
+    END
+
     IDD_DIALOG_SAME_FILE_LISTS, DIALOG
     BEGIN
         LEFTMARGIN, 7
@@ -425,6 +442,11 @@ END
 //
 
 IDD_DIALOG_GOTO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_LENGTH AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

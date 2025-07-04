@@ -65,7 +65,11 @@ void CLogFilterView::Dump(CDumpContext& dc) const
 
 void CLogFilterView::OnInitialUpdate()
 {
-	FTLTRACE(TEXT("Enter OnInitialUpdate"));
+    CRect rcClient;
+    GetClientRect(&rcClient);
+
+	FTLTRACE(TEXT("Enter OnInitialUpdate, x=%d, y=%d, width=%d, height=%d"), 
+        rcClient.left, rcClient.top, rcClient.Width(), rcClient.Height());
 
 	if (FALSE == m_bInited)
 	{
@@ -76,6 +80,30 @@ void CLogFilterView::OnInitialUpdate()
 			CheckDlgButton(nId, BST_CHECKED);
 		}
 		m_comboBoxFilter.SetCurSel(ftAll);
+
+        CWnd* pEditFullTraceInfo =  GetDlgItem(IDC_EDIT_FULL_TRACEINFO);
+
+        CRect rcFullTraceWin;
+        pEditFullTraceInfo->GetWindowRect(&rcFullTraceWin);
+        this->ScreenToClient(rcFullTraceWin);
+
+        int Margin = rcFullTraceWin.left;
+
+        rcFullTraceWin.right = rcClient.Width() - Margin * 2;
+        rcFullTraceWin.bottom = rcClient.Height() - Margin;
+        FTLTRACE(TEXT("move edit full trace to {%d, %d}, {%d x %d}"), 
+            rcFullTraceWin.left, rcFullTraceWin.top, rcFullTraceWin.Width(), rcFullTraceWin.Height());
+        pEditFullTraceInfo->MoveWindow(rcFullTraceWin, TRUE);
+
+        CRect rcFilterStringWin;
+        CWnd* pEditFilterString = GetDlgItem(IDC_EDIT_FILTER_STRING);
+        pEditFilterString->GetWindowRect(rcFilterStringWin);
+        this->ScreenToClient(rcFilterStringWin);
+        rcFilterStringWin.right = rcFullTraceWin.right;
+        pEditFilterString->MoveWindow(rcFilterStringWin, TRUE);
+        FTLTRACE(TEXT("move edit filter to {%d, %d}, {%d x %d}"),
+            rcFilterStringWin.left, rcFilterStringWin.top, rcFilterStringWin.Width(), rcFilterStringWin.Height());
+
 		this->InitAutoSizeInfo();
 		m_bInited = TRUE;
 	}
@@ -84,7 +112,12 @@ void CLogFilterView::OnInitialUpdate()
 void CLogFilterView::OnSize(UINT nType, int cx, int cy)
 {
     CFormView::OnSize(nType, cx, cy);
-    this->AutoResizeUpdateLayout(cx,cy);
+    FTLTRACE(TEXT("CLogFilterView::OnSize, nTYpe=%d, cx=%d, cy=%d"), nType, cx, cy)
+    if (cx > 0 && cy > 0)
+    {
+        this->AutoResizeUpdateLayout(cx, cy);
+    }
+    
     //if (::IsWindow(m_AllLogItemsList.GetSafeHwnd()))
     //{
     //    if (-1 == m_LogItemListWidthMargin)
